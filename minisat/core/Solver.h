@@ -21,24 +21,63 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #ifndef Minisat_Solver_h
 #define Minisat_Solver_h
 
-#include "minisat/mtl/Vec.h"
-#include "minisat/mtl/Heap.h"
-#include "minisat/mtl/Alg.h"
-#include "minisat/utils/Options.h"
-#include "minisat/core/SolverTypes.h"
+#include "mtl/Vec.h"
+#include "mtl/Heap.h"
+#include "mtl/Alg.h"
+#include "utils/Options.h"
+#include "core/SolverTypes.h"
 
+/*AB*/
+#include "utils/Utils.hpp"
+#include "utils/Print.hpp"
+#include "theorysolvers/PCSolver.hpp"
+namespace MinisatID{
+	class PCSolver;
+}
+/*AE*/
 
 namespace Minisat {
+
+/*AB*/
+#define reportf(format, args...) ( fflush(stdout), fprintf(stderr, format, ## args), fflush(stderr) )
+/*AE*/
 
 //=================================================================================================
 // Solver -- the main class:
 
 class Solver {
+private:
+/*A*/	MinisatID::PCSolver& solver;
 public:
+
+/*AB*/
+	void		addLearnedClause	(CRef c);	// don't check anything, just add it to the clauses and bump activity
+	void		cancelUntil			(int level);	// Backtrack until a certain level.
+	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef);				// Enqueue a literal. Assumes value of literal is undefined
+	int 		getLevel			(int var) 			const;
+	bool 		totalModelFound		();				//true if the current assignment is completely two-valued
+	std::vector<Lit> getDecisions		() const;
+	int			decisionLevel		()      const; // Gives the current decisionlevel.
+	const vec<Lit>& getTrail() const { return trail; }
+	int 			getStartLastLevel() const { return trail_lim.size()==0?0:trail_lim.last(); }
+	void    	varDecayActivity	();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
+	void     	varBumpActivity		(Var v);                 // Increase a variable with the current 'bump' value.
+	void     	claDecayActivity	();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
+	void     	printClause			(const CRef c) const;
+	uint64_t    nbVars				()      const;       // The current number of variables.
+	void		printStatistics		() const ;
+	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b);	}
+	CRef	 	getClause			(int i) const { return clauses[i]; }
+	int			nbClauses			() const { return clauses.size(); }
+	void		addForcedChoices	(const vec<Lit>& fc) { reportf("Not supported by solver!\n"); exit(-1);  }
+	void		disableHeur			() { reportf("Not supported by solver!\n"); exit(-1); }
+	bool     	isDecisionVar		(Var v) const { return decision[v]; }
+	Var			newVar				(bool freepol, bool dvar=true) { return newVar(freepol?l_Undef:l_False, dvar); }
+/*AE*/
 
     // Constructor/Destructor:
     //
-    Solver();
+    Solver(/*AB*/MinisatID::PCSolver& s/*AE*/);
     virtual ~Solver();
 
     // Problem specification:
@@ -56,7 +95,7 @@ public:
     // Solving:
     //
     bool    simplify     ();                        // Removes already satisfied clauses.
-    bool    solve        (const vec<Lit>& assumps); // Search for a model that respects a given set of assumptions.
+    bool    solve        (const vec<Lit>& assumps/*AB*/, bool nosearch=false/*AE*/); // Search for a model that respects a given set of assumptions.
     lbool   solveLimited (const vec<Lit>& assumps); // Search for a model that respects a given set of assumptions (With resource constraints).
     bool    solve        ();                        // Search without assumptions.
     bool    solve        (Lit p);                   // Search for a model that respects a single assumption.
@@ -216,25 +255,25 @@ protected:
     void     insertVarOrder   (Var x);                                                 // Insert a variable in the decision order priority queue.
     Lit      pickBranchLit    ();                                                      // Return the next decision variable.
     void     newDecisionLevel ();                                                      // Begins a new decision level.
-    void     uncheckedEnqueue (Lit p, CRef from = CRef_Undef);                         // Enqueue a literal. Assumes value of literal is undefined.
+    /*AB*///void     uncheckedEnqueue (Lit p, CRef from = CRef_Undef);                         // Enqueue a literal. Assumes value of literal is undefined./*AE*/
     bool     enqueue          (Lit p, CRef from = CRef_Undef);                         // Test if fact 'p' contradicts current state, enqueue otherwise.
     CRef     propagate        ();                                                      // Perform unit propagation. Returns possibly conflicting clause.
-    void     cancelUntil      (int level);                                             // Backtrack until a certain level.
+    /*AB*///void     cancelUntil      (int level);                                             // Backtrack until a certain level./*AE*/
     void     analyze          (CRef confl, vec<Lit>& out_learnt, int& out_btlevel);    // (bt = backtrack)
     void     analyzeFinal     (Lit p, vec<Lit>& out_conflict);                         // COULD THIS BE IMPLEMENTED BY THE ORDINARIY "analyze" BY SOME REASONABLE GENERALIZATION?
     bool     litRedundant     (Lit p, uint32_t abstract_levels);                       // (helper method for 'analyze()')
-    lbool    search           (int nof_conflicts);                                     // Search for a given number of conflicts.
-    lbool    solve_           ();                                                      // Main solve method (assumptions given in 'assumptions').
+    lbool    search           (int nof_conflicts/*AB*/, bool nosearch/*AE*/);                                     // Search for a given number of conflicts.
+    lbool    solve_           (/*AB*/bool nosearch = false/*AE*/);                                     // Main solve method(assumptions given in 'assumptions').
     void     reduceDB         ();                                                      // Reduce the set of learnt clauses.
     void     removeSatisfied  (vec<CRef>& cs);                                         // Shrink 'cs' to contain only non-satisfied clauses.
     void     rebuildOrderHeap ();
 
     // Maintaining Variable/Clause activity:
     //
-    void     varDecayActivity ();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
+	/*AB*///void     varDecayActivity ();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead./*AE*/
     void     varBumpActivity  (Var v, double inc);     // Increase a variable with the current 'bump' value.
-    void     varBumpActivity  (Var v);                 // Increase a variable with the current 'bump' value.
-    void     claDecayActivity ();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
+    /*AB*///void     varBumpActivity  (Var v);                 // Increase a variable with the current 'bump' value./*AE*/
+    /*AB*///void     claDecayActivity ();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead./*AE*/
     void     claBumpActivity  (Clause& c);             // Increase a clause with the current 'bump' value.
 
     // Operations on clauses:
@@ -249,7 +288,7 @@ protected:
 
     // Misc:
     //
-    int      decisionLevel    ()      const; // Gives the current decisionlevel.
+    ///*A*/int      decisionLevel    ()      const; // Gives the current decisionlevel.
     uint32_t abstractLevel    (Var x) const; // Used to represent an abstraction of sets of decision levels.
     CRef     reason           (Var x) const;
     int      level            (Var x) const;
@@ -315,7 +354,7 @@ inline bool     Solver::addClause       (Lit p)                 { add_tmp.clear(
 inline bool     Solver::addClause       (Lit p, Lit q)          { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); return addClause_(add_tmp); }
 inline bool     Solver::addClause       (Lit p, Lit q, Lit r)   { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); add_tmp.push(r); return addClause_(add_tmp); }
 inline bool     Solver::locked          (const Clause& c) const { return value(c[0]) == l_True && reason(var(c[0])) != CRef_Undef && ca.lea(reason(var(c[0]))) == &c; }
-inline void     Solver::newDecisionLevel()                      { trail_lim.push(trail.size()); }
+inline void     Solver::newDecisionLevel()                      { trail_lim.push(trail.size()); /*AB*/ solver.newDecisionLevel(); /*AE*/ }
 
 inline int      Solver::decisionLevel ()      const   { return trail_lim.size(); }
 inline uint32_t Solver::abstractLevel (Var x) const   { return 1 << (level(x) & 31); }
@@ -354,7 +393,7 @@ inline bool     Solver::solve         ()                    { budgetOff(); assum
 inline bool     Solver::solve         (Lit p)               { budgetOff(); assumptions.clear(); assumptions.push(p); return solve_() == l_True; }
 inline bool     Solver::solve         (Lit p, Lit q)        { budgetOff(); assumptions.clear(); assumptions.push(p); assumptions.push(q); return solve_() == l_True; }
 inline bool     Solver::solve         (Lit p, Lit q, Lit r) { budgetOff(); assumptions.clear(); assumptions.push(p); assumptions.push(q); assumptions.push(r); return solve_() == l_True; }
-inline bool     Solver::solve         (const vec<Lit>& assumps){ budgetOff(); assumps.copyTo(assumptions); return solve_() == l_True; }
+inline bool     Solver::solve         (const vec<Lit>& assumps /*AB*/, bool nosearch/*AE*/){ budgetOff(); assumps.copyTo(assumptions); return solve_(nosearch) == l_True; }
 inline lbool    Solver::solveLimited  (const vec<Lit>& assumps){ assumps.copyTo(assumptions); return solve_(); }
 inline bool     Solver::okay          ()      const   { return ok; }
 
@@ -363,10 +402,24 @@ inline void     Solver::toDimacs     (const char* file, Lit p){ vec<Lit> as; as.
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q){ vec<Lit> as; as.push(p); as.push(q); toDimacs(file, as); }
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q, Lit r){ vec<Lit> as; as.push(p); as.push(q); as.push(r); toDimacs(file, as); }
 
+/*AB*/
+inline int		Solver::getLevel	  (int var) const {return level(var);}
+inline uint64_t Solver::nbVars        ()      const   { return (uint64_t)nVars(); }
+/*AE*/
+
 
 //=================================================================================================
 // Debug etc:
 
+/*AB*/
+inline void Solver::printStatistics() const{
+	reportf("> restarts              : %lld\n", starts);
+	reportf("> conflicts             : %-12lld\n", conflicts);
+	reportf("> decisions             : %-12lld   (%4.2f %% random)\n", decisions, (float)rnd_decisions*100 / (float)decisions);
+	reportf("> propagations          : %-12lld\n", propagations);
+    reportf("> conflict literals     : %-12lld   (%4.2f %% deleted)\n", tot_literals, (max_literals - tot_literals)*100 / (double)max_literals);
+}
+/*AE*/
 
 //=================================================================================================
 }

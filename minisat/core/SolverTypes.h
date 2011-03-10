@@ -76,14 +76,6 @@ const Lit lit_Error = { -1 };  // }
 //=================================================================================================
 // Lifted booleans:
 //
-// NOTE: this implementation is optimized for the case when comparisons between values are mostly
-//       between one variable and one constant. Some care had to be taken to make sure that gcc 
-//       does enough constant propagation to produce sensible code, and this appears to be somewhat
-//       fragile unfortunately.
-
-#define l_True  (lbool((uint8_t)0)) // gcc does not do constant propagation if these are real constants.
-#define l_False (lbool((uint8_t)1))
-#define l_Undef (lbool((uint8_t)2))
 
 class lbool {
     uint8_t value;
@@ -113,6 +105,19 @@ public:
 };
 inline int   toInt  (lbool l) { return l.value; }
 inline lbool toLbool(int   v) { return lbool((uint8_t)v);  }
+
+// NOTE: this implementation is optimized for the case when comparisons between values are mostly
+//       between one variable and one constant. Some care had to be taken to make sure that gcc 
+//       does enough constant propagation to produce sensible code, and this appears to be somewhat
+//       fragile unfortunately.
+
+const lbool l_True  = toLbool((uint8_t)0);
+const lbool l_False = toLbool((uint8_t)1);
+const lbool l_Undef = toLbool((uint8_t)2);
+/*A*///But still this conflicts with other programs defining the same, so we don't do this
+/*#define l_True  (lbool((uint8_t)0)) // gcc does not do constant propagation if these are real constants.
+#define l_False (lbool((uint8_t)1))
+#define l_Undef (lbool((uint8_t)2))*/
 
 //=================================================================================================
 // Clause -- a simple class for representing a clause:
