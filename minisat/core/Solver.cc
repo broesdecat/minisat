@@ -175,7 +175,6 @@ void Solver::addLearnedClause(CRef rc){
 		}
 	}else{
 		assert(ca[rc].size()==1);
-		//TODO maybe backtracking to 0 is not the best method.
 		cancelUntil(0);
 		addClause(ca[rc][0]);
 	}
@@ -193,6 +192,29 @@ bool Solver::totalModelFound(){
 			v = order_heap[0];
 	}
 	return v==var_Undef;
+}
+
+void Solver::removeAllLearnedClauses(){
+	for (int i = 0; i < learnts.size(); i++){
+		removeClause(learnts[i]);
+	}
+	learnts.clear();
+}
+
+
+bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
+    assert(decisionLevel() == 0);
+    if (!ok) return false;
+
+    sort(ps);
+    assert(ps.size()>1);
+
+    CRef cr = ca.alloc(ps, false);
+    clauses.push(cr);
+    attachClause(cr);
+    newclause = cr;
+
+    return true;
 }
 
 /*AE*/
@@ -251,7 +273,25 @@ void Solver::detachClause(CRef cr, bool strict) {
     }
 
     if (c.learnt()) learnts_literals -= c.size();
-    else            clauses_literals -= c.size(); }
+    else            clauses_literals -= c.size();
+}
+
+
+/*AB*/
+//@pre: cs and clauses are both ordered according to time added
+void Solver::removeClauses(const std::vector<CRef>& cs) {
+	int i, j, k = 0;
+	for (i = j = 0; i < clauses.size(); i++){
+	    if(k<cs.size() && cs[k]==clauses[i]){
+	    	removeClause(cs[k++]);
+	    }else{
+	    	clauses[j++] = clauses[i];
+	    }
+	}
+	assert(cs.size()==k);
+	clauses.shrink(i - j);
+}
+/*AE*/
 
 
 void Solver::removeClause(CRef cr) {
@@ -278,10 +318,9 @@ void Solver::cancelUntil(int level) {
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
-            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last())
+            if (phase_saving > 1 || ((phase_saving == 1) && c > trail_lim.last()))
                 polarity[x] = sign(trail[c]);
             insertVarOrder(x); 
-            /*AB*/solver.backtrackRest(trail[c]);/*AE*/
         }
         qhead = trail_lim[level];
         trail.shrink(trail.size() - trail_lim[level]);
@@ -801,6 +840,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
             analyze(confl, learnt_clause, backtrack_level);
             cancelUntil(backtrack_level);
 
+            //FIXME inconsistency with addLearnedClause method
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
             }else{
@@ -828,14 +868,14 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
 
         }else{
             // NO CONFLICT
-            if (nof_conflicts >= 0 && conflictC >= nof_conflicts || !withinBudget()){
+            if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
                 cancelUntil(0);
                 return l_Undef; }
 
             // Simplify the set of problem clauses:
-            if (decisionLevel() == 0 && !simplify())
+            if (decisionLevel() == 0 && /*AB*/ !solver.simplify() /*AE*/)
                 return l_False;
 
             if (learnts.size()-nAssigns() >= max_learnts)
@@ -989,8 +1029,6 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
 //=================================================================================================
 // Writing CNF to DIMACS:
 // 
-// FIXME: this needs to be rewritten completely.
-
 static Var mapVar(Var x, vec<Var>& map, Var& max)
 {
     if (map.size() <= x || map[x] == -1){

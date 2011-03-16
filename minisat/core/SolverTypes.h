@@ -147,11 +147,12 @@ class Clause {
         for (int i = 0; i < ps.size(); i++) 
             data[i].lit = ps[i];
 
-        if (header.has_extra)
+        if (header.has_extra){
             if (header.learnt)
                 data[header.size].act = 0;
             else
                 calcAbstraction();
+        }
     }
 
     // NOTE: This constructor cannot be used directly (doesn't allocate enough memory).
@@ -162,11 +163,12 @@ class Clause {
         for (int i = 0; i < from.size(); i++)
             data[i].lit = from[i];
 
-        if (header.has_extra)
+        if (header.has_extra){
             if (header.learnt)
                 data[header.size].act = from.data[header.size].act;
             else 
                 data[header.size].abs = from.data[header.size].abs;
+        }
     }
 
 public:

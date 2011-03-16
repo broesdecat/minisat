@@ -51,28 +51,33 @@ private:
 public:
 
 /*AB*/
-	void		addLearnedClause	(CRef c);	// don't check anything, just add it to the clauses and bump activity
+	void     	printClause			(const CRef c) 	const;
+	bool    	addClause 			(vec<Lit>& ps, CRef& newclause);
+	void		addLearnedClause	(CRef c);				// don't check anything, just add it to the clauses and bump activity
+	void 		removeAllLearnedClauses();
+	void     	removeClauses     	(const std::vector<CRef>& cr);              // Detach and free a clause.
+	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b); }
+	CRef	 	getClause			(int i) 		const { return clauses[i]; }
+	int			nbClauses			() 				const { return clauses.size(); }
+
 	void		cancelUntil			(int level);	// Backtrack until a certain level.
 	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef);				// Enqueue a literal. Assumes value of literal is undefined
-	int 		getLevel			(int var) 			const;
-	bool 		totalModelFound		();				//true if the current assignment is completely two-valued
-	std::vector<Lit> getDecisions		() const;
-	int			decisionLevel		()      const; // Gives the current decisionlevel.
-	const vec<Lit>& getTrail() const { return trail; }
-	int 			getStartLastLevel() const { return trail_lim.size()==0?0:trail_lim.last(); }
-	void    	varDecayActivity	();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
-	void     	varBumpActivity		(Var v);                 // Increase a variable with the current 'bump' value.
-	void     	claDecayActivity	();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
-	void     	printClause			(const CRef c) const;
-	uint64_t    nbVars				()      const;       // The current number of variables.
-	void		printStatistics		() const ;
-	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b);	}
-	CRef	 	getClause			(int i) const { return clauses[i]; }
-	int			nbClauses			() const { return clauses.size(); }
+	int 		getLevel			(int var)	const;
+	bool 		totalModelFound		();				// True if the current assignment is completely two-valued
+	std::vector<Lit> getDecisions	()	const;
+	int			decisionLevel		()	const; 		// Gives the current decisionlevel.
+	const vec<Lit>& getTrail		()	const { return trail; }
+	int 			getStartLastLevel()	const { return trail_lim.size()==0?0:trail_lim.last(); }
+	void    	varDecayActivity	();				// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
+	void     	varBumpActivity		(Var v);		// Increase a variable with the current 'bump' value.
+	void     	claDecayActivity	();				// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
+
+	uint64_t    nbVars				()	const;		// The current number of variables.
+	void		printStatistics		()	const ;
+
 	void		addForcedChoices	(const vec<Lit>& fc) { reportf("Not supported by solver!\n"); exit(-1);  }
 	void		disableHeur			() { reportf("Not supported by solver!\n"); exit(-1); }
 	bool     	isDecisionVar		(Var v) const { return decision[v]; }
-	Var			newVar				(bool freepol, bool dvar=true) { return newVar(freepol?l_Undef:l_False, dvar); }
 /*AE*/
 
     // Constructor/Destructor:
@@ -89,7 +94,7 @@ public:
     bool    addClause (Lit p);                                  // Add a unit clause to the solver. 
     bool    addClause (Lit p, Lit q);                           // Add a binary clause to the solver. 
     bool    addClause (Lit p, Lit q, Lit r);                    // Add a ternary clause to the solver. 
-    bool    addClause_(      vec<Lit>& ps);                     // Add a clause to the solver without making superflous internal copy. Will
+    bool    addClause_(vec<Lit>& ps);							// Add a clause to the solver without making superflous internal copy. Will
                                                                 // change the passed vector 'ps'.
 
     // Solving:
@@ -413,11 +418,11 @@ inline uint64_t Solver::nbVars        ()      const   { return (uint64_t)nVars()
 
 /*AB*/
 inline void Solver::printStatistics() const{
-	reportf("> restarts              : %lld\n", starts);
-	reportf("> conflicts             : %-12lld\n", conflicts);
-	reportf("> decisions             : %-12lld   (%4.2f %% random)\n", decisions, (float)rnd_decisions*100 / (float)decisions);
-	reportf("> propagations          : %-12lld\n", propagations);
-    reportf("> conflict literals     : %-12lld   (%4.2f %% deleted)\n", tot_literals, (max_literals - tot_literals)*100 / (double)max_literals);
+	reportf("> restarts              : %lu\n", starts);
+	reportf("> conflicts             : %-12lu\n", conflicts);
+	reportf("> decisions             : %-12lu   (%4.2f %% random)\n", decisions, (float)rnd_decisions*100 / (float)decisions);
+	reportf("> propagations          : %-12lu\n", propagations);
+    reportf("> conflict literals     : %-12lu   (%4.2f %% deleted)\n", tot_literals, (max_literals - tot_literals)*100 / (double)max_literals);
 }
 /*AE*/
 
