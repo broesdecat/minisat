@@ -25,12 +25,21 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 /*AB*/
 #include <vector>
+#include <iostream>
 
 using namespace MinisatID;
 using namespace MinisatID::Print;
 /*AE*/
 
 using namespace Minisat;
+
+void Minisat::reportf(const char* format, ...){
+	fflush(stdout);
+    va_list args;
+    va_start(args, format);
+	fprintf(stderr, format, args);
+	fflush(stderr);
+}
 
 //=================================================================================================
 // Options:
@@ -1162,3 +1171,13 @@ void Solver::garbageCollect()
                ca.size()*ClauseAllocator::Unit_Size, to.size()*ClauseAllocator::Unit_Size);
     to.moveTo(ca);
 }
+
+/*AB*/
+void Solver::printStatistics() const{
+	std::clog << "> restarts              : " <<starts <<"\n";
+	std::clog << "> conflicts             : " <<decisions <<"  (" <<(float)rnd_decisions*100 / (float)decisions <<" % random)\n";
+	std::clog << "> decisions             : " <<starts <<"\n";
+	std::clog << "> propagations          : " <<propagations <<"\n";
+	std::clog << "> conflict literals     : " <<tot_literals <<"  (" <<((max_literals-tot_literals)*100/(double)max_literals) <<" % deleted)\n";
+}
+/*AE*/
