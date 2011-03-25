@@ -989,7 +989,7 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
 
     solves++;
 
-    max_learnts               = nClauses() * learntsize_factor;
+    max_learnts               = nClauses() * learntsize_factor /*AB*/+ 5000/*AE*/; //Temp adjustment: relevant if there are few clauses, but lots of agg for example
     learntsize_adjust_confl   = learntsize_adjust_start_confl;
     learntsize_adjust_cnt     = (int)learntsize_adjust_confl;
     lbool   status            = l_Undef;
