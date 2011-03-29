@@ -23,14 +23,12 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "mtl/Vec.h"
 #include "mtl/Heap.h"
-#include "mtl/Alg.h"
 #include "utils/Options.h"
 #include "core/SolverTypes.h"
 
 /*AB*/
-#include "utils/Utils.hpp"
-#include "utils/Print.hpp"
-#include "theorysolvers/PCSolver.hpp"
+#include <vector>
+#include <iostream>
 namespace MinisatID{
 	class PCSolver;
 }
@@ -78,6 +76,8 @@ public:
 	void		addForcedChoices	(const vec<Lit>& fc) { reportf("Not supported by solver!\n"); exit(-1);  }
 	void		disableHeur			() { reportf("Not supported by solver!\n"); exit(-1); }
 	bool     	isDecisionVar		(Var v) const { return decision[v]; }
+
+	void		notifyCustomHeur	() { usecustomheur = true; }
 /*AE*/
 
     // Constructor/Destructor:
@@ -176,6 +176,9 @@ public:
 
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
+
+    bool 	usecustomheur;
+    double	customheurfreq;
 
     // Statistics: (read-only member variable)
     //
@@ -359,7 +362,6 @@ inline bool     Solver::addClause       (Lit p)                 { add_tmp.clear(
 inline bool     Solver::addClause       (Lit p, Lit q)          { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); return addClause_(add_tmp); }
 inline bool     Solver::addClause       (Lit p, Lit q, Lit r)   { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); add_tmp.push(r); return addClause_(add_tmp); }
 inline bool     Solver::locked          (const Clause& c) const { return value(c[0]) == l_True && reason(var(c[0])) != CRef_Undef && ca.lea(reason(var(c[0]))) == &c; }
-inline void     Solver::newDecisionLevel()                      { trail_lim.push(trail.size()); /*AB*/ solver.newDecisionLevel(); /*AE*/ }
 
 inline int      Solver::decisionLevel ()      const   { return trail_lim.size(); }
 inline uint32_t Solver::abstractLevel (Var x) const   { return 1 << (level(x) & 31); }

@@ -24,9 +24,18 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "minisat/core/Solver.h"
 
 /*AB*/
+#include "minisat/mtl/Vec.h"
+#include "minisat/mtl/Heap.h"
+#include "minisat/mtl/Alg.h"
+#include "minisat/utils/Options.h"
+
 #include <vector>
 #include <iostream>
 #include <cstdarg>
+
+#include "utils/Utils.hpp"
+#include "utils/Print.hpp"
+#include "theorysolvers/PCSolver.hpp"
 
 using namespace MinisatID;
 using namespace MinisatID::Print;
@@ -92,6 +101,10 @@ Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
+/*AB*/,usecustomheur(false)
+		,customheurfreq(0.75)
+/*AE*/
+
     // Statistics: (formerly in 'SolverStats')
     //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0)
@@ -144,6 +157,11 @@ Var Solver::newVar(lbool upol, bool dvar)
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
     return v;
+}
+
+inline void Solver::newDecisionLevel(){
+	trail_lim.push(trail.size());
+	/*AB*/ solver.newDecisionLevel(); /*AE*/
 }
 
 /*AB*/
@@ -352,16 +370,40 @@ Lit Solver::pickBranchLit()
     // Random decision:
     if (drand(random_seed) < random_var_freq && !order_heap.empty()){
         next = order_heap[irand(random_seed,order_heap.size())];
-        if (value(next) == l_Undef && decision[next])
-            rnd_decisions++; }
+        if (value(next) == l_Undef && decision[next]){
+            rnd_decisions++;
+        }
+    }
 
     // Activity based decision:
-    while (next == var_Undef || value(next) != l_Undef || !decision[next])
+    bool start = true;
+    while (next == var_Undef || value(next) != l_Undef || !decision[next]){
+    	if(!start){ // So then remove it if it proved redundant
+    		order_heap.removeMin();
+    	}
+    	start = false;
+
         if (order_heap.empty()){
             next = var_Undef;
             break;
-        }else
-            next = order_heap.removeMin();
+        }else{
+            //next = order_heap.removeMin(); //REMOVES the next choice from the heap
+            next = order_heap.peek(); //Does NOT remove this
+        }
+    }
+
+    /*AB*/
+    if(usecustomheur && next!=var_Undef){
+    	if (drand(random_seed) < customheurfreq){
+    		if(customheurfreq>0.25){
+    			customheurfreq -= 0.01;
+    		}
+    		next = solver.changeBranchChoice(next);
+    	}
+	}else{
+		order_heap.removeMin();
+	}
+    /*AE*/
 
     // Choose polarity based on different polarity modes (global or per-variable):
     if (next == var_Undef)
