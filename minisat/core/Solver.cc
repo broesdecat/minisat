@@ -401,7 +401,9 @@ Lit Solver::pickBranchLit()
     		next = solver.changeBranchChoice(next);
     	}
 	}else{
-		order_heap.removeMin();
+		if(!start && next != var_Undef){
+			order_heap.removeMin();
+		}
 	}
     /*AE*/
 
