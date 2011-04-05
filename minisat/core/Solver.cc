@@ -38,7 +38,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "theorysolvers/PCSolver.hpp"
 
 using namespace MinisatID;
-using namespace MinisatID::Print;
 /*AE*/
 
 using namespace Minisat;
