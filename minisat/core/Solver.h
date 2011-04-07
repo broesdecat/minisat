@@ -46,6 +46,7 @@ void reportf(const char* format, ...);
 class Solver {
 private:
 /*A*/	MinisatID::PCSolver& solver;
+/*A*/	vec<vec<vec<Lit> > > symmgroups;
 public:
 
 /*AB*/
@@ -74,6 +75,7 @@ public:
 	void		printStatistics		()	const ;
 
 	void		addForcedChoices	(const vec<Lit>& fc) { reportf("Not supported by solver!\n"); exit(-1);  }
+	void		addSymmetryGroup	(const vec<vec<Lit> >& symms);
 	void		disableHeur			() { reportf("Not supported by solver!\n"); exit(-1); }
 	bool     	isDecisionVar		(Var v) const { return decision[v]; }
 
