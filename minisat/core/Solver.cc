@@ -37,6 +37,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "utils/Print.hpp"
 #include "theorysolvers/PCSolver.hpp"
 
+using namespace std;
 using namespace MinisatID;
 /*AE*/
 
@@ -479,17 +480,16 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         
         /*AB*/
 		if(verbosity>4){
-			reportf("DECISION LEVEL %d\n", decisionLevel());
-			reportf("Current conflict clause: ");
+			clog <<"DECISION LEVEL " <<decisionLevel() <<"\n";
+			clog <<"Current conflict clause: ";
 			printClause(confl);
-			reportf("\n");
-			reportf("Current learned clause: ");
+			clog <<"\n";
+			clog <<"Current learned clause: ";
 			for (int i = 1; i < out_learnt.size(); i++) {
-				print(out_learnt[i]);
-				reportf(" ");
+				clog <<out_learnt[i] <<" ";
 			}
-			reportf("\n");
-			reportf("Still explain: ");
+			clog <<"\n";
+			clog <<"Still explain: ";
 		}
 		/*AE*/
 
@@ -512,9 +512,9 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         /*AB*/
         if(verbosity>4){
         	for(std::vector<Lit>::const_iterator i=explain.begin(); i<explain.end(); i++){
-        		print(*i); reportf(" ");
+        		clog <<*i <<" ";
         	}
-        	reportf("\n");
+        	clog <<"\n";
 		}
 
         if(deleteImplicitClause){
@@ -530,15 +530,14 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         
 		/*AB*/
 		if(verbosity>4){
-			reportf("Getting explanation for ");
+			clog <<"Getting explanation for ";
 			for(std::vector<Lit>::iterator i=explain.begin(); i<explain.end(); i++){
 				if(var(*i)==var(p)){
 					explain.erase(i);
 					break;
 				}
 			}
-			print(p);
-			reportf("\n");
+			clog <<p <<"\n";
 		}
 
 		if(confl==CRef_Undef && pathC>1){
