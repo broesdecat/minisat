@@ -200,21 +200,16 @@ std::vector<Lit> Solver::getDecisions()const {
 }
 
 void Solver::addLearnedClause(CRef rc){
-	if(ca[rc].size()>1){
-		learnts.push(rc);
-		attachClause(rc);
+	assert(ca[rc].size()>0);
+	learnts.push(rc);
+	attachClause(rc);
 
-		Clause& c = ca[rc];
-		claBumpActivity(c);
-		if(verbosity>=3){
-			reportf("Learned clause added: ");
-			printClause(rc);
-			reportf("\n");
-		}
-	}else{
-		assert(ca[rc].size()==1);
-		cancelUntil(0);
-		addClause(ca[rc][0]);
+	Clause& c = ca[rc];
+	claBumpActivity(c);
+	if(verbosity>=3){
+		reportf("Learned clause added: ");
+		printClause(rc);
+		reportf("\n");
 	}
 }
 
@@ -230,13 +225,6 @@ bool Solver::totalModelFound(){
 			v = order_heap[0];
 	}
 	return v==var_Undef;
-}
-
-void Solver::removeAllLearnedClauses(){
-	for (int i = 0; i < learnts.size(); i++){
-		removeClause(learnts[i]);
-	}
-	learnts.clear();
 }
 
 
@@ -316,18 +304,37 @@ void Solver::detachClause(CRef cr, bool strict) {
 
 
 /*AB*/
-//@pre: cs and clauses are both ordered according to time added
-void Solver::removeClauses(const std::vector<CRef>& cs) {
-	int i, j, k = 0;
-	for (i = j = 0; i < clauses.size(); i++){
-	    if(k<cs.size() && cs[k]==clauses[i]){
-	    	removeClause(cs[k++]);
-	    }else{
-	    	clauses[j++] = clauses[i];
-	    }
+void Solver::saveState(){
+	savedok = ok;
+	savedlevel = decisionLevel();
+	savedclausessize = clauses.size();
+	remove_satisfied = false;
+	savedqhead = qhead;
+	trail_lim.copyTo(savedtraillim);
+	trail.copyTo(savedtrail);
+}
+
+void Solver::resetState(){
+	//FIXME is this correct and sufficient?
+	ok = savedok;
+	cancelUntil(savedlevel);
+	qhead = savedqhead;
+	trail.clear();
+	savedtrail.copyTo(trail);
+	trail_lim.clear();
+	savedtraillim.copyTo(trail_lim);
+
+	//Remove new clauses
+	for (int i = savedclausessize; i < clauses.size(); i++){
+		removeClause(clauses[i]);
 	}
-	assert(cs.size()==k);
-	clauses.shrink(i - j);
+	clauses.shrink(savedclausessize);
+
+	//Remove learned clauses //TODO only forgetting the new learned clauses would also do and be better for learning!
+	for (int i = 0; i < learnts.size(); i++){
+		removeClause(learnts[i]);
+	}
+	learnts.clear();
 }
 /*AE*/
 

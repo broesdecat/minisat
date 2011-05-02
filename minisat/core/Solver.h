@@ -50,11 +50,11 @@ private:
 public:
 
 /*AB*/
+	void		saveState			();
+	void		resetState			();
 	void     	printClause			(const CRef c) 	const;
 	bool    	addClause 			(vec<Lit>& ps, CRef& newclause);
 	void		addLearnedClause	(CRef c);				// don't check anything, just add it to the clauses and bump activity
-	void 		removeAllLearnedClauses();
-	void     	removeClauses     	(const std::vector<CRef>& cr);              // Detach and free a clause.
 	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b); }
 	CRef	 	getClause			(int i) 		const { return clauses[i]; }
 	int			nbClauses			() 				const { return clauses.size(); }
@@ -179,8 +179,8 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
-    bool 	usecustomheur;
-    double	customheurfreq;
+    bool		usecustomheur;
+    double		customheurfreq;
 
     // Statistics: (read-only member variable)
     //
@@ -259,6 +259,13 @@ protected:
     int64_t             conflict_budget;    // -1 means no budget.
     int64_t             propagation_budget; // -1 means no budget.
     bool                asynch_interrupt;
+
+    /*AB*/
+	bool 				savedok;
+	int					savedlevel, savedclausessize, savedqhead;
+	vec<int>			savedtraillim;
+	vec<Lit>			savedtrail;
+    /*AE*/
 
     // Main internal methods:
     //
