@@ -248,7 +248,7 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
 
 bool Solver::addClause_(vec<Lit>& ps)
 {
-    assert(decisionLevel() == 0);
+	//FIXME check if I could safely move this assertion inwards
     if (!ok) return false;
 
     // Check if clause is satisfied and remove false/duplicate literals:
@@ -261,9 +261,11 @@ bool Solver::addClause_(vec<Lit>& ps)
             ps[j++] = p = ps[i];
     ps.shrink(i - j);
 
-    if (ps.size() == 0)
+    if (ps.size() == 0){
+    	assert(decisionLevel() == 0);
         return ok = false;
-    else if (ps.size() == 1){
+    }else if (ps.size() == 1){
+    	assert(decisionLevel() == 0);
         uncheckedEnqueue(ps[0]);
         return ok = (propagate() == CRef_Undef);
     }else{
