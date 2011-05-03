@@ -29,12 +29,54 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 /*AB*/
 #include <vector>
 #include <iostream>
+#include <set>
+#include <list>
+
+#include "external/ExternalUtils.hpp"
+
+using namespace std;
+
+using namespace MinisatID;
+
 namespace MinisatID{
 	class PCSolver;
 }
 /*AE*/
 
 namespace Minisat {
+
+// #ifdef SYM_JO
+
+class Solver;
+
+class SymVars{
+public:
+	
+	vector<vector<int> > symVars;
+	set<unsigned int> forbiddenRows;
+	set<unsigned int> forbiddenColumns;
+	map<int, pair<unsigned int, unsigned int> > index;
+	list<pair<int, unsigned int> > rowBacktrackLevels;
+	list<pair<int, unsigned int> > columnBacktrackLevels;
+	Solver* solver;
+	vector<set<int> > columns;
+	
+	// @pre: alle binnenste vectoren in args hebben zelfde lengte
+	// @pre: alle Literals van args zijn positief
+	SymVars(vec<vec<Lit> >& args, Solver* s);
+	
+	void print();
+	
+	void propagate(Lit l, int level);
+	
+	void backtrack(int level, Lit decision);
+	
+	bool isPropagated(Lit conflict);
+
+};
+
+// #endif
+
 
 /*AB*/
 void reportf(const char* format, ...);
@@ -47,6 +89,11 @@ class Solver {
 private:
 /*A*/	MinisatID::PCSolver& solver;
 /*A*/	vec<vec<vec<Lit> > > symmgroups;
+// #ifdef SYM_JO		
+		vector<SymVars*> symClasses;
+		bool propagatedBySymClasses;
+// #endif
+
 public:
 
 /*AB*/
