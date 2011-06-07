@@ -80,6 +80,8 @@ public:
 	bool     	isDecisionVar		(Var v) const { return decision[v]; }
 
 	void		notifyCustomHeur	() { usecustomheur = true; }
+
+	bool		isAlreadyUsedInAnalyze(const Lit& lit) const;
 /*AE*/
 
     // Constructor/Destructor:

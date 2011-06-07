@@ -455,6 +455,10 @@ Lit Solver::pickBranchLit()
 |        rest of literals. There may be others from the same level though.
 |  
 |________________________________________________________________________________________________@*/
+bool Solver::isAlreadyUsedInAnalyze(const Lit& lit) const{
+	return seen[var(lit)]==1;
+}
+
 void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 {
     int pathC = 0;
