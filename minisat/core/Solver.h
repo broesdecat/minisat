@@ -66,6 +66,8 @@ public:
 	std::vector<Lit> getDecisions	()	const;
 	int			decisionLevel		()	const; 		// Gives the current decisionlevel.
 	const vec<Lit>& getTrail		()	const { return trail; }
+	int		 	getTrailSize		()	const { return trail.size(); }
+	const Lit& 	getTrailElem		(int index)	const { return trail[index]; }
 	int 			getStartLastLevel()	const { return trail_lim.size()==0?0:trail_lim.last(); }
 	void    	varDecayActivity	();				// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
 	void     	varBumpActivity		(Var v);		// Increase a variable with the current 'bump' value.
