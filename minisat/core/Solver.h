@@ -29,12 +29,43 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 /*AB*/
 #include <vector>
 #include <iostream>
-namespace MinisatID{
-	class PCSolver;
-}
+#include <set>
+#include <list>
+#include <map>
 /*AE*/
 
 namespace Minisat {
+
+// #ifdef SYM_JO
+
+class Solver;
+
+class SymVars{
+public:
+	std::vector<std::vector<int> > symVars;
+	std::set<unsigned int> forbiddenRows;
+	std::set<unsigned int> forbiddenColumns;
+	std::map<int, std::pair<unsigned int, unsigned int> > index;
+	std::list<std::pair<int, unsigned int> > rowBacktrackLevels;
+	std::list<std::pair<int, unsigned int> > columnBacktrackLevels;
+	Solver* solver;
+	std::vector<std::set<int> > columns;
+
+	// @pre: alle binnenste vectoren in args hebben zelfde lengte
+	// @pre: alle Literals van args zijn positief
+	SymVars(vec<vec<Lit> >& args, Solver* s);
+
+	void print();
+
+	void propagate(Lit l, int level);
+
+	void backtrack(int level, Lit decision);
+
+	bool isPropagated(Lit conflict);
+
+};
+
+// #endif
 
 /*AB*/
 void reportf(const char* format, ...);
@@ -47,6 +78,11 @@ class Solver {
 private:
 /*A*/	MinisatID::PCSolver& solver;
 /*A*/	vec<vec<vec<Lit> > > symmgroups;
+//AB #ifdef SYM_JO		
+		std::vector<SymVars*> symClasses;
+		bool propagatedBySymClasses;
+//AE #endif
+
 public:
 
 /*AB*/

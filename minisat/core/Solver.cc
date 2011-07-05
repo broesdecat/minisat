@@ -362,6 +362,9 @@ bool Solver::satisfied(const Clause& c) const {
 //
 void Solver::cancelUntil(int level) {
     if (decisionLevel() > level){
+    // #ifdef SYM_JO
+    	Lit decision = trail[trail_lim[level]];
+    // #endif
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
@@ -374,6 +377,11 @@ void Solver::cancelUntil(int level) {
         /*AB*/
         int levels = trail_lim.size() - level;
         trail_lim.shrink(levels);
+	// #ifdef SYM_JO
+		for(vector<SymVars*>::iterator vs_it=symClasses.begin(); vs_it!=symClasses.end(); vs_it++){
+			(*vs_it)->backtrack(level, decision);
+		}
+	// #endif
         solver.backtrackDecisionLevel(levels, level);
         /*AE*/
     } }
@@ -539,6 +547,16 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         // Select next clause to look at:
         while (!seen[var(trail[index--])]);
         p     = trail[index+1];
+
+// #ifdef SYM_JO        
+        for(unsigned int i=0; !propagatedBySymClasses && i<symClasses.size(); i++){
+        	propagatedBySymClasses = symClasses[i]->isPropagated(p);
+        }
+        if(propagatedBySymClasses){
+        	return;
+        }
+// #endif
+
         confl = reason(var(p));
         
 		/*AB*/
@@ -726,6 +744,16 @@ CRef Solver::propagate()
 
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
+
+    	//#ifdef SYM_JO
+    	//cer << "propagate: " << var(p) << endl;
+    	for(vector<SymVars*>::iterator vs_it=symClasses.begin(); vs_it!=symClasses.end(); vs_it++){
+			(*vs_it)->propagate(p,decisionLevel());
+		}
+		// propagate symmetry groups op basis van literal p, waarde setten == met uncheckedenqueue
+		// eerst echter conflicten checken: niet a=T toevoegen als we al weten dat a=F
+    	//#endif SYM_JO
+
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
         num_props++;
@@ -912,7 +940,16 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
+//#ifdef SYM_JO
+            propagatedBySymClasses=false;  
+// #endif
             analyze(confl, learnt_clause, backtrack_level);
+//#ifdef SYM_JO
+            if(propagatedBySymClasses){
+				cancelUntil(decisionLevel()-1);
+				continue;
+            }
+// #endif
             cancelUntil(backtrack_level);
 
             //FIXME inconsistency with addLearnedClause method
@@ -1072,6 +1109,16 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
     int curr_restarts = 0;
     while (status == l_Undef){
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
+
+ //#ifdef SYM_JO
+        symClasses=vector<SymVars*>();
+        for(unsigned int i=0; i<symmgroups.size(); i++){
+        	SymVars* temp = new SymVars(symmgroups[i], this);
+        	//temp->print();
+        	symClasses.push_back(temp);
+        }
+ //#endif
+
         status = search(rest_base * restart_first/*AB*/, nosearch/*AE*/);
     	/*AB*/
     	status = solver.checkStatus(status);
@@ -1239,6 +1286,115 @@ void Solver::garbageCollect()
 }
 
 /*AB*/
+
+// #ifdef SYM_JO
+
+// @pre: alle binnenste vectoren in args hebben zelfde lengte
+// @pre: alle Literals van args zijn positief
+SymVars::SymVars(vec<vec<Lit> >& args, Solver* s){
+	solver=s;
+	forbiddenRows=set<unsigned int>();
+	forbiddenColumns=set<unsigned int>();
+	index = map<int, pair<unsigned int,unsigned int> >();
+	rowBacktrackLevels = list<pair<int, unsigned int> >() ;
+	columnBacktrackLevels = list<pair<int, unsigned int> >() ;
+	symVars = vector<vector<int> >();
+	
+	columns = vector<set<int> >();
+	for(unsigned int i=0; i<args[0].size(); i++){
+		columns.push_back(set<int>());
+	}	
+	for(unsigned int i=0; i<args.size(); i++){
+		vector<int> temp = vector<int>();
+		for(unsigned int j=0; j<args[i].size(); j++){
+			temp.push_back(var(args[i][j]));
+			index.insert(pair<int, pair<unsigned int, unsigned int> >(var(args[i][j]), pair<unsigned int, unsigned int>(i,j)));
+			columns[j].insert(var(args[i][j]));
+		}
+		symVars.push_back(temp);
+	}
+}
+
+void SymVars::print(){
+	for(int i=0; i<symVars.size(); i++){
+		for(int j=0; j<symVars[i].size() && !forbiddenRows.count(i); j++){
+			if(!forbiddenColumns.count(j)){
+				cerr << symVars[i][j] << " | ";
+			}else{
+				cerr << "   | ";
+			}
+		}
+		cerr << endl;
+	}
+	cerr << endl;
+}
+
+void SymVars::propagate(Lit l, int level){
+	map<int, pair<unsigned int,unsigned int> >::iterator index_it = index.find(var(l));
+	if(index_it!=index.end()){ // present in table
+		pair<unsigned int,unsigned int> coords = index_it->second;
+		unsigned int row=coords.first; unsigned int column = coords.second;
+		if(!forbiddenRows.count(row) && !forbiddenColumns.count(column)){
+			forbiddenRows.insert(row);
+			rowBacktrackLevels.push_back(pair<int, unsigned int>(level,row));
+		}
+	}
+	//print();
+}
+
+void SymVars::backtrack(int level, Lit l){
+	while(!rowBacktrackLevels.empty() && level < rowBacktrackLevels.back().first){
+		forbiddenRows.erase(rowBacktrackLevels.back().second);
+		rowBacktrackLevels.pop_back();
+	}
+	while(!columnBacktrackLevels.empty() && level < columnBacktrackLevels.back().first){
+		forbiddenColumns.erase(columnBacktrackLevels.back().second);
+		columnBacktrackLevels.pop_back();
+	}
+	
+	int variable = var(l);
+	map<int, pair<unsigned int,unsigned int> >::iterator index_it = index.find(variable);
+	if(index_it!=index.end()){ // present in table
+		pair<unsigned int,unsigned int> coords = index_it->second;
+		unsigned int row=coords.first; unsigned int column = coords.second;
+		if(!forbiddenRows.count(row) && !forbiddenColumns.count(column)){
+			forbiddenColumns.insert(column);
+			columnBacktrackLevels.push_back(pair<int, unsigned int>(level,column));// is level juist?
+			for(int i=0; i<symVars.size(); i++){
+				if(!forbiddenRows.count(i)){
+					Lit symLit = mkLit(symVars[i][column],!sign(l));
+					if(solver->value(symLit)==l_Undef){
+						//cerr << " !!! propagating: " << var(symLit) << endl;
+						solver->uncheckedEnqueue(symLit);
+					}else{
+						//cer << " !!! propagation already has value: " << var(symLit) << endl;
+						if(sign(l)){
+							assert(solver->value(symLit)==l_True);
+						}else{
+							assert(solver->value(symLit)==l_False);
+						}
+					}
+				}	
+			}
+		}
+	}
+	
+}
+
+bool SymVars::isPropagated(Lit conflict){
+	bool result = false;
+	for(set<unsigned int>::iterator sui_it=forbiddenColumns.begin(); !result && sui_it!=forbiddenColumns.end(); sui_it++){
+		result=columns[*sui_it].count(var(conflict));
+	}
+	if(result){
+		//cerr << "Propagated: " << var(conflict)<< endl;
+	}
+	return result;
+}
+
+
+// #endif
+
 void Solver::printStatistics() const{
 	std::clog << "> restarts              : " <<starts <<"\n";
 	std::clog << "> conflicts             : " <<decisions <<"  (" <<(float)rnd_decisions*100 / (float)decisions <<" % random)\n";
