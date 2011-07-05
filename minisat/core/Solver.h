@@ -34,6 +34,10 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <map>
 /*AE*/
 
+namespace MinisatID{
+	class PCSolver;
+}
+
 namespace Minisat {
 
 // #ifdef SYM_JO
