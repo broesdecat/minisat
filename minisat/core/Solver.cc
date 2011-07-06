@@ -76,7 +76,6 @@ static DoubleOption  opt_garbage_frac      (_cat, "gc-frac",     "The fraction o
 
 Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
 	/*AB*/solver(s), /*AE*/
-	propagatedBySymClasses(false),
     // Parameters (user settable):
     //
     verbosity        (0)
@@ -132,7 +131,6 @@ Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
 
 Solver::~Solver()
 {
-	deleteList<SymVars>(symClasses);
 }
 
 
@@ -366,8 +364,7 @@ void Solver::cancelUntil(int level) {
         /*AB*/
         int levels = trail_lim.size() - level;
         trail_lim.shrink(levels);
-        solver.backtrackDecisionLevel(levels, level);
-        solver.getSymmSolver()->backtrackDecisionLevel(leve, decision);
+        solver.backtrackDecisionLevel(levels, level, decision);
         /*AE*/
     } }
 
@@ -452,7 +449,7 @@ bool Solver::isAlreadyUsedInAnalyze(const Lit& lit) const{
 	return seen[var(lit)]==1;
 }
 
-void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
+bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 {
     int pathC = 0;
     Lit p     = lit_Undef;
@@ -532,14 +529,13 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         // Select next clause to look at:
         while (!seen[var(trail[index--])]);
         p     = trail[index+1];
-
-        if(getSymmSolver()->analyze(p)){
-        	return;
-        }
-
         confl = reason(var(p));
         
 		/*AB*/
+        if(solver.symmetryPropagationOnAnalyze(p)){
+        	return true;
+        }
+
 		if(verbosity>4){
 			clog <<"Getting explanation for ";
 			for(std::vector<Lit>::iterator i=explain.begin(); i<explain.end(); i++){
@@ -724,11 +720,6 @@ CRef Solver::propagate()
 
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
-
-    	for(vector<SymVars*>::iterator vs_it=symClasses.begin(); vs_it!=symClasses.end(); vs_it++){
-			(*vs_it)->propagate(p,decisionLevel());
-		}
-
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
         num_props++;
@@ -916,11 +907,9 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
 
             learnt_clause.clear();
 
-            propagatedBySymClasses=false;
+            bool symmetrybacktrack = analyze(confl, learnt_clause, backtrack_level);
 
-            analyze(confl, learnt_clause, backtrack_level);
-
-            if(propagatedBySymClasses){
+            if(symmetrybacktrack){
 				cancelUntil(decisionLevel()-1);
 				continue;
             }
@@ -1063,14 +1052,6 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
-
-    if(symClasses.size()>0){
-    	deleteList<SymVars>(symClasses);
-    }
-    propagatedBySymClasses = false;
-    for(unsigned int i=0; i<symmgroups.size(); i++){
-    	symClasses.push_back(new SymVars(symmgroups[i]));
-    }
 
     solves++;
 
