@@ -189,16 +189,22 @@ std::vector<Lit> Solver::getDecisions()const {
 }
 
 void Solver::addLearnedClause(CRef rc){
-	assert(ca[rc].size()>0);
-	learnts.push(rc);
-	attachClause(rc);
-
 	Clause& c = ca[rc];
-	claBumpActivity(c);
-	if(verbosity>=3){
-		reportf("Learned clause added: ");
-		printClause(rc);
-		reportf("\n");
+	if(c.size()>1){
+		learnts.push(rc);
+		attachClause(rc);
+		claBumpActivity(c);
+		if(verbosity>=3){
+			reportf("Learned clause added: ");
+			printClause(rc);
+			reportf("\n");
+		}
+	}else{
+		assert(c.size()==1);
+		cancelUntil(0);
+		vec<Lit> ps;
+		ps.push(c[0]);
+		addClause(ps);
 	}
 }
 
