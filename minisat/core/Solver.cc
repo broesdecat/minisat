@@ -191,7 +191,7 @@ std::vector<Lit> Solver::getDecisions()const {
 void Solver::addLearnedClause(CRef rc){
 	Clause& c = ca[rc];
 	if(c.size()>1){
-		learnts.push(rc);
+		addToClauses(rc, true);
 		attachClause(rc);
 		claBumpActivity(c);
 		if(verbosity>=3){
@@ -231,7 +231,7 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
     assert(ps.size()>1);
 
     CRef cr = ca.alloc(ps, false);
-    clauses.push(cr);
+    addToClauses(cr, false);
     attachClause(cr);
     newclause = cr;
 
@@ -265,12 +265,23 @@ bool Solver::addClause_(vec<Lit>& ps)
         return ok = (propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
-        clauses.push(cr);
+        addToClauses(cr, false);
         attachClause(cr);
     }
 
     return true;
 }
+
+/*AB*/
+void Solver::addToClauses(CRef cr, bool learnt){
+	solver.notifyClauseAdded(cr);
+	if(learnt){
+		learnts.push(cr);
+	}else{
+		clauses.push(cr);
+	}
+}
+/*AE*/
 
 
 void Solver::attachClause(CRef cr) {
@@ -339,6 +350,7 @@ void Solver::resetState(){
 void Solver::removeClause(CRef cr) {
     Clause& c = ca[cr];
     detachClause(cr);
+    solver.notifyClauseDeleted(cr);
     // Don't leave pointers to free'd memory!
     if (locked(c)) vardata[var(c[0])].reason = CRef_Undef;
     c.mark(1); 
@@ -931,7 +943,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 uncheckedEnqueue(learnt_clause[0]);
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
-                learnts.push(cr);
+                addToClauses(cr, true);
                 attachClause(cr);
                 claBumpActivity(ca[cr]);
                 uncheckedEnqueue(learnt_clause[0], cr);
