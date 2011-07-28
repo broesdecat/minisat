@@ -62,7 +62,7 @@ public:
 	CRef	 	getClause			(int i) 		const { return clauses[i]; }
 	int			nbClauses			() 				const { return clauses.size(); }
 	int			getClauseSize		(CRef cr) const { return ca[cr].size(); }
-	Lit			getClauseLit		(CRef cr, int i) const { assert(0=<i && i<getClauseSize(cr)); return ca[cr][i]; }
+	Lit			getClauseLit		(CRef cr, int i) const { assert(0<=i && i<getClauseSize(cr)); return ca[cr][i]; }
 
 	void		cancelUntil			(int level);	// Backtrack until a certain level.
 	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef);				// Enqueue a literal. Assumes value of literal is undefined
