@@ -54,46 +54,44 @@ public:
 	void		resetState			();
 	void     	printClause			(const CRef c) 	const;
 	bool    	addClause 			(vec<Lit>& ps, CRef& newclause);
-	void		addLearnedClause	(CRef c);				// don't check anything, just add it to the clauses and bump activity
-	void     	removeClause     	(CRef cr);               // Detach and free a clause.
+	void		addLearnedClause	(CRef c);					// don't check anything, just add it to the clauses and bump activity
+	void     	removeClause     	(CRef cr);					// Detach and free a clause.
 	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b); }
-	CRef	 	getClause			(int i) 		const { return clauses[i]; }
-	int			nbClauses			() 				const { return clauses.size(); }
-	int			getClauseSize		(CRef cr) const { return ca[cr].size(); }
-	Lit			getClauseLit		(CRef cr, int i) const { assert(0<=i && i<getClauseSize(cr)); return ca[cr][i]; }
+	CRef	 	getClause			(int i) 		const 	{ return clauses[i]; }
+	int			nbClauses			() 				const 	{ return clauses.size(); }
+	int			getClauseSize		(CRef cr) 		const 	{ return ca[cr].size(); }
+	Lit			getClauseLit		(CRef cr, int i) const 	{ assert(0<=i && i<getClauseSize(cr)); return ca[cr][i]; }
 
-	void		cancelUntil			(int level);	// Backtrack until a certain level.
-	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef);				// Enqueue a literal. Assumes value of literal is undefined
-	int 		getLevel			(int var)	const;
-	bool 		totalModelFound		();				// True if the current assignment is completely two-valued
-	std::vector<Lit> getDecisions	()	const;
-	int			decisionLevel		()	const; 		// Gives the current decisionlevel.
-	const vec<Lit>& getTrail		()	const { return trail; }
-	int		 	getTrailSize		()	const { return trail.size(); }
-	const Lit& 	getTrailElem		(int index)	const { return trail[index]; }
-	int 			getStartLastLevel()	const { return trail_lim.size()==0?0:trail_lim.last(); }
-	void    	varDecayActivity	();				// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
-	void     	varBumpActivity		(Var v);		// Increase a variable with the current 'bump' value.
-	void     	claDecayActivity	();				// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
+	void		cancelUntil			(int level);				// Backtrack until a certain level.
+	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef); // Enqueue a literal. Assumes value of literal is undefined
+	int 		getLevel			(int var)		const;
+	bool 		totalModelFound		();							// True if the current assignment is completely two-valued
+	std::vector<Lit> getDecisions	()				const;
+	int			decisionLevel		()				const; 		// Gives the current decisionlevel.
+	const vec<Lit>& getTrail		()				const 	{ return trail; }
+	int		 	getTrailSize		()				const 	{ return trail.size(); }
+	const Lit& 	getTrailElem		(int index)		const 	{ return trail[index]; }
+	int 		getStartLastLevel	()				const 	{ return trail_lim.size()==0?0:trail_lim.last(); }
+	void     	varBumpActivity		(Var v);					// Increase a variable with the current 'bump' value.
 
-	uint64_t    nbVars				()	const;		// The current number of variables.
+	uint64_t    nbVars				()				const;					// The current number of variables.
 
-	void		addForcedChoices	(const vec<Lit>& fc) { std::cerr <<"Not supported by solver!\n"; exit(-1);  }
-	void		disableHeur			() { std::cerr <<"Not supported by solver!\n"; exit(-1); }
-	bool     	isDecisionVar		(Var v) const { return decision[v]; }
+	void		addForcedChoices	(const vec<Lit>& fc) 	{ std::cerr <<"Not supported by solver!\n"; exit(-1);  }
+	void		disableHeur			() 						{ std::cerr <<"Not supported by solver!\n"; exit(-1); }
+	bool     	isDecisionVar		(Var v) 		const 	{ return decision[v]; }
 
-	void		notifyCustomHeur	() { usecustomheur = true; }
+	void		notifyCustomHeur	() 						{ usecustomheur = true; }
 
 	bool		isAlreadyUsedInAnalyze(const Lit& lit) const;
 
 	//PROPAGATOR CODE
-	const char* getName			() const { return "satsolver"; }
-	CRef 	getExplanation		(const Lit& l) { return reason(var(l));}
-	void 	finishParsing		(bool& present, bool& unsat) { present = true; unsat = !simplify(); }
-	void 	notifyBacktrack		(int untillevel, const Lit& decision) { Propagator::notifyBacktrack(untillevel, decision); }
-	CRef 	notifypropagate		();
-	void 	printStatistics		() const;
-	int		getNbOfFormulas		() const { return nClauses(); }
+	const char* getName				() 				const	{ return "satsolver"; }
+	CRef 		getExplanation		(const Lit& l) 			{ return reason(var(l));}
+	void 		finishParsing		(bool& present, bool& unsat) { present = true; unsat = !simplify(); }
+	void 		notifyBacktrack		(int untillevel, const Lit& decision) { Propagator::notifyBacktrack(untillevel, decision); }
+	CRef 		notifypropagate		();
+	void 		printStatistics		() 				const;
+	int			getNbOfFormulas		() 				const 	{ return nClauses(); }
 /*AE*/
 
     // Constructor/Destructor:
@@ -202,6 +200,9 @@ public:
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
 
 protected:
+	void    	varDecayActivity	();							// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
+	void     	claDecayActivity	();							// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
+
     /*AB*/
     void 	addToClauses(CRef cr, bool learnt);
     /*AE*/

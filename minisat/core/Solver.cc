@@ -127,9 +127,12 @@ Solver::Solver(/*AB*/PCSolver* s/*AE*/) :
   , propagation_budget (-1)
   , asynch_interrupt   (false)
 {
-/*A*/getPCSolver().acceptFinishParsing(this, false);
+	/*AB*/
+	getPCSolver().accept(this, EV_PROPAGATE);
+	getPCSolver().accept(this, EV_PRINTSTATS);
+	getPCSolver().acceptFinishParsing(this, false);
+	/*AE*/
 }
-
 
 Solver::~Solver()
 {
@@ -229,7 +232,6 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
 
 bool Solver::addClause_(vec<Lit>& ps)
 {
-	//FIXME check if I could safely move this assertion inwards
     if (!ok) return false;
 
     // Check if clause is satisfied and remove false/duplicate literals:
