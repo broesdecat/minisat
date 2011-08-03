@@ -32,6 +32,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <set>
 #include <list>
 #include <map>
+#include "modules/DPLLTmodule.hpp"
 /*AE*/
 
 namespace MinisatID{
@@ -43,14 +44,11 @@ namespace Minisat {
 //=================================================================================================
 // Solver -- the main class:
 
-class Solver {
+class Solver: public MinisatID::Propagator{
 private:
-/*AB*/
-	MinisatID::PCSolver& solver;
-/*AE*/
+/*A*/	bool fullassignment;
 
 public:
-
 /*AB*/
 	void		saveState			();
 	void		resetState			();
@@ -79,7 +77,6 @@ public:
 	void     	claDecayActivity	();				// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
 
 	uint64_t    nbVars				()	const;		// The current number of variables.
-	void		printStatistics		()	const ;
 
 	void		addForcedChoices	(const vec<Lit>& fc) { std::cerr <<"Not supported by solver!\n"; exit(-1);  }
 	void		disableHeur			() { std::cerr <<"Not supported by solver!\n"; exit(-1); }
@@ -88,11 +85,20 @@ public:
 	void		notifyCustomHeur	() { usecustomheur = true; }
 
 	bool		isAlreadyUsedInAnalyze(const Lit& lit) const;
+
+	//PROPAGATOR CODE
+	const char* getName			() const { return "satsolver"; }
+	CRef 	getExplanation		(const Lit& l) { return reason(var(l));}
+	void 	finishParsing		(bool& present, bool& unsat) { present = true; unsat = !simplify(); }
+	void 	notifyBacktrack		(int untillevel, const Lit& decision) { Propagator::notifyBacktrack(untillevel, decision); }
+	CRef 	notifypropagate		();
+	void 	printStatistics		() const;
+	int		getNbOfFormulas		() const { return nClauses(); }
 /*AE*/
 
     // Constructor/Destructor:
     //
-    Solver(/*AB*/MinisatID::PCSolver& s/*AE*/);
+    Solver(/*AB*/MinisatID::PCSolver* s/*AE*/);
     virtual ~Solver();
 
     // Problem specification:
@@ -282,7 +288,7 @@ protected:
     //
     void     insertVarOrder   (Var x);                                                 // Insert a variable in the decision order priority queue.
     Lit      pickBranchLit    ();                                                      // Return the next decision variable.
-    void     newDecisionLevel ();                                                      // Begins a new decision level.
+    void     createNewDecisionLevel ();                                                      // Begins a new decision level.
     /*AB*///void     uncheckedEnqueue (Lit p, CRef from = CRef_Undef);                         // Enqueue a literal. Assumes value of literal is undefined./*AE*/
     bool     enqueue          (Lit p, CRef from = CRef_Undef);                         // Test if fact 'p' contradicts current state, enqueue otherwise.
     CRef     propagate        ();                                                      // Perform unit propagation. Returns possibly conflicting clause.

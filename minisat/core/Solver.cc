@@ -74,11 +74,12 @@ static DoubleOption  opt_garbage_frac      (_cat, "gc-frac",     "The fraction o
 // Constructor/Destructor:
 
 
-Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
-	/*AB*/solver(s), /*AE*/
+Solver::Solver(/*AB*/PCSolver* s/*AE*/) :
+	/*A*/Propagator(s),
+	/*A*/fullassignment(false),
     // Parameters (user settable):
     //
-    verbosity        (0)
+    /*A*/verbosity        (getPCSolver().verbosity())
   , var_decay        (opt_var_decay)
   , clause_decay     (opt_clause_decay)
   , random_var_freq  (opt_random_var_freq)
@@ -101,9 +102,8 @@ Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
-/*AB*/,usecustomheur(false)
-		,customheurfreq(0.75)
-/*AE*/
+/*A*/,usecustomheur(false)
+/*A*/,customheurfreq(0.75)
 
     // Statistics: (formerly in 'SolverStats')
     //
@@ -126,7 +126,9 @@ Solver::Solver(/*AB*/PCSolver& s/*AE*/) :
   , conflict_budget    (-1)
   , propagation_budget (-1)
   , asynch_interrupt   (false)
-{}
+{
+/*A*/getPCSolver().acceptFinishParsing(this, false);
+}
 
 
 Solver::~Solver()
@@ -159,27 +161,12 @@ Var Solver::newVar(lbool upol, bool dvar)
     return v;
 }
 
-inline void Solver::newDecisionLevel(){
+inline void Solver::createNewDecisionLevel(){
 	trail_lim.push(trail.size());
-	/*AB*/ solver.newDecisionLevel(); /*AE*/
+/*A*/ getPCSolver().newDecisionLevel();
 }
 
 /*AB*/
-/**
- * This is (currently) necessary, because the intialization schema is the following:
- *
- * add elements: /
- * add unit clause: PROPAGATION
- * add aggregate: /
- *
- * finishDatastructures:
- * 		initialize all aggregates and propagate the already derived atoms in them
- *
- */
-//void Solver::finishParsing(){
-//	qhead = 0;
-//}
-
 std::vector<Lit> Solver::getDecisions()const {
 	std::vector<Lit> v;
 	for(int i=0; i<trail_lim.size(); i++){
@@ -237,7 +224,6 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
 
     return true;
 }
-
 /*AE*/
 
 
@@ -274,7 +260,7 @@ bool Solver::addClause_(vec<Lit>& ps)
 
 /*AB*/
 void Solver::addToClauses(CRef cr, bool learnt){
-	solver.notifyClauseAdded(cr);
+	getPCSolver().notifyClauseAdded(cr);
 	if(learnt){
 		learnts.push(cr);
 	}else{
@@ -350,7 +336,7 @@ void Solver::resetState(){
 void Solver::removeClause(CRef cr) {
     Clause& c = ca[cr];
     detachClause(cr);
-    solver.notifyClauseDeleted(cr);
+    getPCSolver().notifyClauseDeleted(cr);
     // Don't leave pointers to free'd memory!
     if (locked(c)) vardata[var(c[0])].reason = CRef_Undef;
     c.mark(1); 
@@ -369,7 +355,8 @@ bool Solver::satisfied(const Clause& c) const {
 //
 void Solver::cancelUntil(int level) {
     if (decisionLevel() > level){
-    	/*AB*/Lit decision = trail[trail_lim[level]];
+    	/*A*/fullassignment = false;
+    	/*A*/Lit decision = trail[trail_lim[level]];
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
@@ -382,7 +369,7 @@ void Solver::cancelUntil(int level) {
         /*AB*/
         int levels = trail_lim.size() - level;
         trail_lim.shrink(levels);
-        solver.backtrackDecisionLevel(levels, level, decision);
+        getPCSolver().backtrackDecisionLevel(level, decision);
         /*AE*/
     } }
 
@@ -425,7 +412,7 @@ Lit Solver::pickBranchLit()
     		if(customheurfreq>0.25){
     			customheurfreq -= 0.01;
     		}
-    		next = solver.changeBranchChoice(next);
+    		next = getPCSolver().changeBranchChoice(next);
     	}
 	}else{
 		if(!start && next != var_Undef){
@@ -482,6 +469,9 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 		}
 	}
 	cancelUntil(lvl);
+	if(lvl==0){
+		return false;
+	}
 	assert(lvl==decisionLevel());
 	assert(confl!=CRef_Undef);
 
@@ -494,7 +484,7 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
     out_learnt.push();      // (leave room for the asserting literal)
     int index   = trail.size() - 1;
 
-	/*AB*/bool deleteImplicitClause = false;/*AE*/
+	/*A*/bool deleteImplicitClause = false;
     do{
         assert(confl != CRef_Undef); // (otherwise should be UIP)
         Clause& c = ca[confl];
@@ -550,7 +540,7 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         confl = reason(var(p));
         
 		/*AB*/
-        if(solver.symmetryPropagationOnAnalyze(p)){
+        if(getPCSolver().symmetryPropagationOnAnalyze(p)){
         	return true;
         }
 
@@ -566,7 +556,7 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 		}
 
 		if(confl==CRef_Undef && pathC>1){
-			confl = solver.getExplanation(p);
+			confl = getPCSolver().getExplanation(p);
 			deleteImplicitClause = true;
 		}
 		if(verbosity>4 && confl!=CRef_Undef) {
@@ -633,9 +623,7 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 
     for (int j = 0; j < analyze_toclear.size(); j++) seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
 
-    /*AB*/
-	return false;
-	/*AE*/
+	/*A*/return false;
 }
 
 
@@ -715,11 +703,7 @@ void Solver::uncheckedEnqueue(Lit p, CRef from)
     assigns[var(p)] = lbool(!sign(p));
     vardata[var(p)] = mkVarData(from, decisionLevel());
     trail.push_(p);
-    /*AB*/
-    if(verbosity>=3){
-    	solver.printEnqueued(p);
-    }
-    /*AE*/
+    /*A*/if(verbosity>=3){ getPCSolver().printEnqueued(p); }
 }
 
 
@@ -735,6 +719,11 @@ void Solver::uncheckedEnqueue(Lit p, CRef from)
 |      * the propagation queue is empty, even if there was a conflict.
 |________________________________________________________________________________________________@*/
 CRef Solver::propagate()
+{
+	return getPCSolver().propagate();
+}
+
+CRef Solver::notifypropagate()
 {
     CRef    confl     = CRef_Undef;
     int     num_props = 0;
@@ -789,14 +778,6 @@ CRef Solver::propagate()
         }
         ws.shrink(i - j);
         /*AB*/
-        //Important: standard propagate returns a conflict clause that ALREADY exists in the clause store
-        //so these functions should return POINTERS OWNED BY SOMEONE ELSE
-		if(confl==CRef_Undef){
-			confl = solver.propagate(p);
-		}
-		if(qhead==trail.size() && confl==CRef_Undef){
-			confl = solver.propagateAtEndOfQueue();
-		}
 		if(confl!=CRef_Undef){
 			qhead = trail.size();
 		}
@@ -920,8 +901,15 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
     vec<Lit>    learnt_clause;
     starts++;
 
+    CRef confl = CRef_Undef;
+    bool fullassignmentconflict = false;
+
     for (;;){
-        CRef confl = propagate();
+    	if(!fullassignmentconflict){
+    		confl = propagate();
+    	}
+    	fullassignmentconflict = false;
+
         if (confl != CRef_Undef){
             // CONFLICT
             conflicts++; conflictC++;
@@ -973,7 +961,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 return l_Undef; }
 
             // Simplify the set of problem clauses:
-            if (decisionLevel() == 0 && /*AB*/ !solver.simplify() /*AE*/)
+            if (decisionLevel() == 0 && !simplify())
                 return l_False;
 
             if (learnts.size()-nAssigns() >= max_learnts)
@@ -986,7 +974,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 Lit p = assumptions[decisionLevel()];
                 if (value(p) == l_True){
                     // Dummy decision level:
-                    newDecisionLevel();
+                    createNewDecisionLevel();
                 }else if (value(p) == l_False){
                     analyzeFinal(~p, conflict);
                     return l_False;
@@ -1008,19 +996,26 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 next = pickBranchLit();
 
                 if (next == lit_Undef)
-                    // Model found:
-                    return l_True;
+                	fullassignment = true;
+					confl = getPCSolver().checkFullAssignment();
+                	if(confl==CRef_Undef){ // Assignment is a model
+                        return l_True;
+                	}else{
+                		fullassignmentconflict = true;
+                	}
                     
                 /*AB*/
 				if (verbosity >= 2) {
-					solver.printChoiceMade(decisionLevel(), next);
+					getPCSolver().printChoiceMade(decisionLevel(), next);
 				}
 				/*AE*/
             }
 
             // Increase decision level and enqueue 'next'
-            newDecisionLevel();
-            uncheckedEnqueue(next);
+            if(!fullassignmentconflict){
+                createNewDecisionLevel();
+                uncheckedEnqueue(next);
+            }
         }
     }
 }
@@ -1077,7 +1072,8 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
 
     solves++;
 
-    max_learnts               = nClauses() * learntsize_factor /*AB*/+ 5000/*AE*/; //Temp adjustment: relevant if there are few clauses, but lots of agg for example
+    // To get a better estimate of the number of max_learnts allowed, have to ask all propagators their size
+    max_learnts               = getPCSolver().getNbOfFormulas() * learntsize_factor;
     learntsize_adjust_confl   = learntsize_adjust_start_confl;
     learntsize_adjust_cnt     = (int)learntsize_adjust_confl;
     lbool   status            = l_Undef;
@@ -1100,7 +1096,6 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
     	if(nosearch){
     		return status;
     	}
-    	status = solver.checkStatus(status);
     	/*AE*/
         if (!withinBudget()) break;
         curr_restarts++;
@@ -1120,7 +1115,7 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
 
-    /*AB*///cancelUntil(0);/*AE*/
+    /*A*///cancelUntil(0);
     return status;
 }
 
