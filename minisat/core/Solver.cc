@@ -705,6 +705,7 @@ void Solver::uncheckedEnqueue(Lit p, CRef from)
     assigns[var(p)] = lbool(!sign(p));
     vardata[var(p)] = mkVarData(from, decisionLevel());
     trail.push_(p);
+    /*A*/getPCSolver().notifySetTrue(p);
     /*A*/if(verbosity>=3){ getPCSolver().printEnqueued(p); }
 }
 
@@ -862,7 +863,7 @@ bool Solver::simplify()
 {
     assert(decisionLevel() == 0);
 
-    if (!ok || propagate() != CRef_Undef)
+    if (!ok || notifypropagate() != CRef_Undef)
         return ok = false;
 
     if (nAssigns() == simpDB_assigns || (simpDB_props > 0))
@@ -997,7 +998,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 decisions++;
                 next = pickBranchLit();
 
-                if (next == lit_Undef)
+                if (next == lit_Undef){
                 	fullassignment = true;
 					confl = getPCSolver().checkFullAssignment();
                 	if(confl==CRef_Undef){ // Assignment is a model
@@ -1005,6 +1006,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 	}else{
                 		fullassignmentconflict = true;
                 	}
+                }
                     
                 /*AB*/
 				if (verbosity >= 2) {
