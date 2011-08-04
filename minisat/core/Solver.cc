@@ -1097,10 +1097,10 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
         status = search(rest_base * restart_first/*AB*/, nosearch/*AE*/);
     	/*AB*/
-    	status = solver.checkStatus(status);
     	if(nosearch){
     		return status;
     	}
+    	status = solver.checkStatus(status);
     	/*AE*/
         if (!withinBudget()) break;
         curr_restarts++;
