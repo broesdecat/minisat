@@ -57,9 +57,12 @@ public:
 	void     	printClause			(const CRef c) 	const;
 	bool    	addClause 			(vec<Lit>& ps, CRef& newclause);
 	void		addLearnedClause	(CRef c);				// don't check anything, just add it to the clauses and bump activity
+	void     	removeClause     	(CRef cr);               // Detach and free a clause.
 	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b); }
 	CRef	 	getClause			(int i) 		const { return clauses[i]; }
 	int			nbClauses			() 				const { return clauses.size(); }
+	int			getClauseSize		(CRef cr) const { return ca[cr].size(); }
+	Lit			getClauseLit		(CRef cr, int i) const { assert(0<=i && i<getClauseSize(cr)); return ca[cr][i]; }
 
 	void		cancelUntil			(int level);	// Backtrack until a certain level.
 	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef);				// Enqueue a literal. Assumes value of literal is undefined
@@ -193,6 +196,9 @@ public:
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
 
 protected:
+    /*AB*/
+    void 	addToClauses(CRef cr, bool learnt);
+    /*AE*/
 
     // Helper structures:
     //
@@ -302,7 +308,6 @@ protected:
     //
     void     attachClause     (CRef cr);               // Attach a clause to watcher lists.
     void     detachClause     (CRef cr, bool strict = false); // Detach a clause to watcher lists.
-    void     removeClause     (CRef cr);               // Detach and free a clause.
     bool     locked           (const Clause& c) const; // Returns TRUE if a clause is a reason for some implication in the current state.
     bool     satisfied        (const Clause& c) const; // Returns TRUE if a clause is satisfied in the current state.
 

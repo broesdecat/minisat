@@ -189,16 +189,22 @@ std::vector<Lit> Solver::getDecisions()const {
 }
 
 void Solver::addLearnedClause(CRef rc){
-	assert(ca[rc].size()>0);
-	learnts.push(rc);
-	attachClause(rc);
-
 	Clause& c = ca[rc];
-	claBumpActivity(c);
-	if(verbosity>=3){
-		reportf("Learned clause added: ");
-		printClause(rc);
-		reportf("\n");
+	if(c.size()>1){
+		addToClauses(rc, true);
+		attachClause(rc);
+		claBumpActivity(c);
+		if(verbosity>=3){
+			reportf("Learned clause added: ");
+			printClause(rc);
+			reportf("\n");
+		}
+	}else{
+		assert(c.size()==1);
+		cancelUntil(0);
+		vec<Lit> ps;
+		ps.push(c[0]);
+		addClause(ps);
 	}
 }
 
@@ -225,7 +231,7 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause){
     assert(ps.size()>1);
 
     CRef cr = ca.alloc(ps, false);
-    clauses.push(cr);
+    addToClauses(cr, false);
     attachClause(cr);
     newclause = cr;
 
@@ -259,12 +265,23 @@ bool Solver::addClause_(vec<Lit>& ps)
         return ok = (propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
-        clauses.push(cr);
+        addToClauses(cr, false);
         attachClause(cr);
     }
 
     return true;
 }
+
+/*AB*/
+void Solver::addToClauses(CRef cr, bool learnt){
+	solver.notifyClauseAdded(cr);
+	if(learnt){
+		learnts.push(cr);
+	}else{
+		clauses.push(cr);
+	}
+}
+/*AE*/
 
 
 void Solver::attachClause(CRef cr) {
@@ -333,6 +350,7 @@ void Solver::resetState(){
 void Solver::removeClause(CRef cr) {
     Clause& c = ca[cr];
     detachClause(cr);
+    solver.notifyClauseDeleted(cr);
     // Don't leave pointers to free'd memory!
     if (locked(c)) vardata[var(c[0])].reason = CRef_Undef;
     c.mark(1); 
@@ -925,7 +943,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
                 uncheckedEnqueue(learnt_clause[0]);
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
-                learnts.push(cr);
+                addToClauses(cr, true);
                 attachClause(cr);
                 claBumpActivity(ca[cr]);
                 uncheckedEnqueue(learnt_clause[0], cr);
@@ -1079,10 +1097,10 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
         status = search(rest_base * restart_first/*AB*/, nosearch/*AE*/);
     	/*AB*/
-    	status = solver.checkStatus(status);
     	if(nosearch){
     		return status;
     	}
+    	status = solver.checkStatus(status);
     	/*AE*/
         if (!withinBudget()) break;
         curr_restarts++;
