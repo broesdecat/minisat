@@ -250,7 +250,8 @@ bool Solver::addClause_(vec<Lit>& ps)
     }else if (ps.size() == 1){
     	assert(decisionLevel() == 0);
         uncheckedEnqueue(ps[0]);
-        return ok = (propagate() == CRef_Undef);
+        bool dummy;
+        return ok = (propagate(dummy) == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
         addToClauses(cr, false);
@@ -283,6 +284,10 @@ void Solver::attachClause(CRef cr) {
 
 void Solver::detachClause(CRef cr, bool strict) {
     const Clause& c = ca[cr];
+    if(c.size()<2){
+    	printClause(cr);
+    	std::clog << "clausesize: "<< c.size() << "\n";
+    }
     assert(c.size() > 1);
     
     if (strict){
@@ -338,7 +343,6 @@ void Solver::resetState(){
 void Solver::removeClause(CRef cr) {
     Clause& c = ca[cr];
     detachClause(cr);
-    getPCSolver().notifyClauseDeleted(cr);
     // Don't leave pointers to free'd memory!
     if (locked(c)) vardata[var(c[0])].reason = CRef_Undef;
     c.mark(1); 
@@ -471,9 +475,11 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 		}
 	}
 	cancelUntil(lvl);
+
 	if(lvl==0){
 		return false;
 	}
+
 	assert(lvl==decisionLevel());
 	assert(confl!=CRef_Undef);
 
@@ -701,7 +707,8 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict)
 
 void Solver::uncheckedEnqueue(Lit p, CRef from)
 {
-    assert(value(p) == l_Undef);
+///	std::clog << decisionLevel() << " | enqueued: " << var(p) << "\n";
+	assert(value(p) == l_Undef);
     assigns[var(p)] = lbool(!sign(p));
     vardata[var(p)] = mkVarData(from, decisionLevel());
     trail.push_(p);
@@ -732,8 +739,18 @@ CRef Solver::notifypropagate()
     int     num_props = 0;
     watches.cleanAll();
 
+    // TODO comment
+    if(!solver.propagateSymmetry2()){
+    	ok = false;
+    	return confl;
+    }
+
+
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
+        if(solver.propagateSymmetry(p)){
+        	symmetryConflict=true;
+        }
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
         num_props++;
@@ -788,6 +805,8 @@ CRef Solver::notifypropagate()
     }
     propagations += num_props;
     simpDB_props -= num_props;
+
+    symmetryConflict=false;
 
     return confl;
 }
@@ -905,6 +924,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
     starts++;
 
     CRef confl = CRef_Undef;
+    symmetryConflict = false;
     bool fullassignmentconflict = false;
 
     for (;;){
@@ -912,6 +932,17 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
     		confl = propagate();
     	}
     	fullassignmentconflict = false;
+
+        if(!ok){
+        	return l_False;
+        }
+
+        if(symmetryConflict){
+        	symmetryConflict=false;
+//			std::clog << "backtrack one after symmetryConflict: " << "\n";
+			cancelUntil(decisionLevel()-1);
+			continue;
+        }
 
         if (confl != CRef_Undef){
             // CONFLICT
@@ -923,10 +954,12 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
             bool symmetrybacktrack = analyze(confl, learnt_clause, backtrack_level);
 
             if(symmetrybacktrack){
+//				std::clog << "backtrack one: " << "\n";
 				cancelUntil(decisionLevel()-1);
 				continue;
             }
 
+//            std::clog << "backtrack_level: " << backtrack_level << "\n";
             cancelUntil(backtrack_level);
 
             //FIXME inconsistency with addLearnedClause method
