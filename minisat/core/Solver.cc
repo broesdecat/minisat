@@ -250,8 +250,7 @@ bool Solver::addClause_(vec<Lit>& ps)
     }else if (ps.size() == 1){
     	assert(decisionLevel() == 0);
         uncheckedEnqueue(ps[0]);
-        bool dummy;
-        return ok = (propagate(dummy) == CRef_Undef);
+        return ok = (propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
         addToClauses(cr, false);
@@ -739,8 +738,8 @@ CRef Solver::notifypropagate()
     int     num_props = 0;
     watches.cleanAll();
 
-    // TODO comment
-    if(!solver.propagateSymmetry2()){
+    // Needs to happen before starting to propagate
+    if(not getPCSolver().propagateSymmetry2()){
     	ok = false;
     	return confl;
     }
@@ -748,8 +747,9 @@ CRef Solver::notifypropagate()
 
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
-        if(solver.propagateSymmetry(p)){
+        if(getPCSolver().propagateSymmetry(p)){ // Needs to happen before doing any other propagation
         	symmetryConflict=true;
+        	return confl;
         }
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
