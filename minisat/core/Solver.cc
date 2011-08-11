@@ -251,7 +251,8 @@ bool Solver::addClause_(vec<Lit>& ps)
     }else if (ps.size() == 1){
     	assert(decisionLevel() == 0);
         uncheckedEnqueue(ps[0]);
-        return ok = (propagate() == CRef_Undef);
+        bool dummy;
+        return ok = (propagate(dummy) == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
         addToClauses(cr, false);
