@@ -720,7 +720,6 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict)
 
 void Solver::uncheckedEnqueue(Lit p, CRef from)
 {
-///	std::clog << decisionLevel() << " | enqueued: " << var(p) << "\n";
 	assert(value(p) == l_Undef);
     assigns[var(p)] = lbool(!sign(p));
     vardata[var(p)] = mkVarData(from, decisionLevel());
@@ -954,9 +953,16 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
 
         if(symmetryConflict){
         	symmetryConflict=false;
-        	// FIXME hier niets leren lijkt een completeness bug! (want je zou oneindig dezelfde keuze kunnen maken en oneindig backtracken
-//			std::clog << "backtrack one after symmetryConflict: " << "\n";
-			cancelUntil(decisionLevel()-1);
+//**/		std::clog << "backtrack one after symmetryConflict: " << "\n";
+			int level = decisionLevel()-1;
+			if(level<0){
+				ok=false;
+			}else{
+				Lit decision = trail[trail_lim[level]];
+				Lit negDecision = mkLit(var(decision),!sign(decision));
+				cancelUntil(level);
+				uncheckedEnqueue(negDecision);
+			}
 			continue;
         }
 
@@ -970,12 +976,19 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
             bool symmetrybacktrack = analyze(confl, learnt_clause, backtrack_level);
 
             if(symmetrybacktrack){
-//				std::clog << "backtrack one: " << "\n";
-				cancelUntil(decisionLevel()-1);
+//**/			std::clog << "backtrack one: " << "\n";
+				int level = decisionLevel()-1;
+				if(level<0){
+					ok=false;
+				}else{
+					Lit decision = trail[trail_lim[level]];
+					Lit negDecision = mkLit(var(decision),!sign(decision));
+					cancelUntil(level);
+					uncheckedEnqueue(negDecision);
+				}
 				continue;
             }
 
-//            std::clog << "backtrack_level: " << backtrack_level << "\n";
             cancelUntil(backtrack_level);
 
             //FIXME inconsistency with addLearnedClause method
