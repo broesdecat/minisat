@@ -939,6 +939,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
 
         if(symmetryConflict){
         	symmetryConflict=false;
+        	// FIXME hier niets leren lijkt een completeness bug! (want je zou oneindig dezelfde keuze kunnen maken en oneindig backtracken
 //			std::clog << "backtrack one after symmetryConflict: " << "\n";
 			cancelUntil(decisionLevel()-1);
 			continue;
