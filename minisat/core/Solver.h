@@ -50,6 +50,8 @@ private:
 
 public:
 /*AB*/
+	bool		isUnsat				() const { return not ok; }
+	void 		notifyUnsat			() { ok = false; }
 	void		saveState			();
 	void		resetState			();
 	void     	printClause			(const CRef c) 	const;
