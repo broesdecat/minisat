@@ -18,7 +18,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************************************/
 
-#include <math.h>
+#include <cmath>
 
 #include "minisat/mtl/Sort.h"
 #include "minisat/core/Solver.h"
@@ -31,6 +31,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <cstdarg>
 
 #include "utils/Utils.hpp"
@@ -1301,4 +1302,34 @@ void Solver::printStatistics() const{
 	std::clog << "> propagations          : " <<propagations <<"\n";
 	std::clog << "> conflict literals     : " <<tot_literals <<"  (" <<((max_literals-tot_literals)*100/(double)max_literals) <<" % deleted)\n";
 }
+
+void Solver::printECNF(std::ostream& stream){
+	if(not okay()){
+		stream <<"0\n";
+		return;
+	}
+	for(int i=0; i<clauses.size(); ++i){
+		const Clause& clause = ca[clauses[i]];
+		stringstream ss;
+		bool clausetrue = false;
+		for(int j=0; not clausetrue && j<clause.size(); ++j){
+			Lit lit = clause[j];
+			lbool val = value(lit);
+			if(val==l_Undef){
+				ss <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" "; // TODO print the translation of all printed literals
+			}else if(val==l_True){
+				clausetrue = true;
+			}else{
+				assert(false);
+			}
+		}
+		ss <<"0\n";
+		stream <<ss.str();
+	}
+	for(int i=0; i<trail.size(); ++i){
+		Lit lit = trail[i];
+		stream <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" 0\n";
+	}
+}
+
 /*AE*/
