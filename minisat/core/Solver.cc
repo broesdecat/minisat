@@ -1303,7 +1303,7 @@ void Solver::printStatistics() const{
 	std::clog << "> conflict literals     : " <<tot_literals <<"  (" <<((max_literals-tot_literals)*100/(double)max_literals) <<" % deleted)\n";
 }
 
-void Solver::printECNF(std::ostream& stream){
+void Solver::printECNF(std::ostream& stream, std::set<Var>& printedvars){
 	if(not okay()){
 		stream <<"0\n";
 		return;
@@ -1316,11 +1316,10 @@ void Solver::printECNF(std::ostream& stream){
 			Lit lit = clause[j];
 			lbool val = value(lit);
 			if(val==l_Undef){
-				ss <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" "; // TODO print the translation of all printed literals
+				ss <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" ";
+				printedvars.insert(var(lit));
 			}else if(val==l_True){
 				clausetrue = true;
-			}else{
-				assert(false);
 			}
 		}
 		ss <<"0\n";
@@ -1329,6 +1328,7 @@ void Solver::printECNF(std::ostream& stream){
 	for(int i=0; i<trail.size(); ++i){
 		Lit lit = trail[i];
 		stream <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" 0\n";
+		printedvars.insert(var(lit));
 	}
 }
 
