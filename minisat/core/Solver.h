@@ -81,7 +81,7 @@ public:
 
 	void		addForcedChoices	(const vec<Lit>& fc) 	{ std::cerr <<"Not supported by solver!\n"; exit(-1);  }
 	void		disableHeur			() 						{ std::cerr <<"Not supported by solver!\n"; exit(-1); }
-	bool     	isDecisionVar		(Var v) 		const 	{ return decision[v]; }
+	bool     	isDecisionVar		(Var v) 		const 	{ assert(v<decision.size());return decision[v]; }
 	void    	setDecisionVar 		(Var v, bool b);  // Declare if a variable should be eligible for selection in the decision heuristic.
 
 	void		notifyCustomHeur	() 						{ usecustomheur = true; }

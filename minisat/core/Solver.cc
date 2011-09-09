@@ -274,6 +274,7 @@ void Solver::addToClauses(CRef cr, bool learnt){
 void Solver::checkResiduals(const Clause& c){
 	if(not isDecisionVar(var(c[0])) && not isDecisionVar(var(c[1]))){
 		int choice = irand(random_seed,2); assert(choice==0 || choice==1);
+		cerr <<"Choice: " <<choice <<"\n";
 		setDecisionVar(var(c[choice]), true);
 	}
 }
