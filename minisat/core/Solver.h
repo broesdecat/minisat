@@ -82,6 +82,7 @@ public:
 	void		addForcedChoices	(const vec<Lit>& fc) 	{ std::cerr <<"Not supported by solver!\n"; exit(-1);  }
 	void		disableHeur			() 						{ std::cerr <<"Not supported by solver!\n"; exit(-1); }
 	bool     	isDecisionVar		(Var v) 		const 	{ return decision[v]; }
+	void    	setDecisionVar 		(Var v, bool b);  // Declare if a variable should be eligible for selection in the decision heuristic.
 
 	void		notifyCustomHeur	() 						{ usecustomheur = true; }
 
@@ -138,7 +139,6 @@ public:
     // Variable mode:
     // 
     void    setPolarity    (Var v, lbool b); // Declare which polarity the decision heuristic should use for a variable. Requires mode 'polarity_user'.
-    void    setDecisionVar (Var v, bool b);  // Declare if a variable should be eligible for selection in the decision heuristic.
 
     // Read state:
     //
@@ -333,6 +333,8 @@ protected:
     int      level            (Var x) const;
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
     bool     withinBudget     ()      const;
+
+    void 	checkResiduals(const Clause& c);
 
     // Static helpers:
     //

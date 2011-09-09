@@ -270,6 +270,13 @@ void Solver::addToClauses(CRef cr, bool learnt){
 		clauses.push(cr);
 	}
 }
+
+void Solver::checkResiduals(const Clause& c){
+	if(not isDecisionVar(var(c[0])) && not isDecisionVar(var(c[1]))){
+		int choice = irand(random_seed,2); assert(choice==0 || choice==1);
+		setDecisionVar(var(c[choice]), true);
+	}
+}
 /*AE*/
 
 
@@ -279,7 +286,12 @@ void Solver::attachClause(CRef cr) {
     watches[~c[0]].push(Watcher(cr, c[1]));
     watches[~c[1]].push(Watcher(cr, c[0]));
     if (c.learnt()) learnts_literals += c.size();
-    else            clauses_literals += c.size(); }
+    else            clauses_literals += c.size();
+
+    /*AB*/
+    checkResiduals(c);
+    /*AE*/
+}
 
 
 void Solver::detachClause(CRef cr, bool strict) {
@@ -782,6 +794,7 @@ CRef Solver::notifypropagate()
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
                     watches[~c[1]].push(w);
+                    /*A*/checkResiduals(c);
                     goto NextClause; }
 
             // Did not find watch -- clause is unit under assignment:
@@ -1322,13 +1335,16 @@ void Solver::printECNF(std::ostream& stream, std::set<Var>& printedvars){
 				clausetrue = true;
 			}
 		}
-		ss <<"0\n";
-		stream <<ss.str();
+		if(not clausetrue){
+			ss <<"0\n";
+			stream <<ss.str();
+		}
 	}
 	for(int i=0; i<trail.size(); ++i){
 		Lit lit = trail[i];
+#warning should print less in printing an ecnf theory
+		// TODO should only print literals which have a translation
 		stream <<(sign(lit)?-(var(lit)+1):var(lit)+1) <<" 0\n";
-		printedvars.insert(var(lit));
 	}
 }
 
