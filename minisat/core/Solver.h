@@ -50,6 +50,11 @@ private:
 
 public:
 /*AB*/
+	// Symmetry code
+	bool		isDecision			(const Lit& lit) const { return false; }
+#warning ERROR IN SYMMETRY CODE
+	CRef		reason				(Var x) const;
+
 	bool		isUnsat				() const { return not ok; }
 	void 		notifyUnsat			() { ok = false; }
 	void		printECNF			(std::ostream& stream, std::set<Var>& printedvars);
@@ -329,7 +334,6 @@ protected:
     //
     ///*A*/int      decisionLevel    ()      const; // Gives the current decisionlevel.
     uint32_t abstractLevel    (Var x) const; // Used to represent an abstraction of sets of decision levels.
-    CRef     reason           (Var x) const;
     int      level            (Var x) const;
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
     bool     withinBudget     ()      const;
