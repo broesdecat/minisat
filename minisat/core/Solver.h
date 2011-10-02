@@ -80,6 +80,7 @@ public:
 	const Lit& 	getTrailElem		(int index)		const 	{ return trail[index]; }
 	int 		getStartLastLevel	()				const 	{ return trail_lim.size()==0?0:trail_lim.last(); }
 	void     	varBumpActivity		(Var v);					// Increase a variable with the current 'bump' value.
+	bool 		isDecision			(Lit& l) 		const	{ return (getLevel(var(l))!=0 && l==trail[trail_lim[getLevel(var(l))-1]]); }
 
 	uint64_t    nbVars				()				const;					// The current number of variables.
 
@@ -208,6 +209,8 @@ public:
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
 
+    CRef     reason           (Var x) const;
+
 protected:
 	void    	varDecayActivity	();							// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
 	void     	claDecayActivity	();							// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
@@ -303,7 +306,7 @@ protected:
     bool     enqueue          (Lit p, CRef from = CRef_Undef);                         // Test if fact 'p' contradicts current state, enqueue otherwise.
     CRef     propagate        ();                                                      // Perform unit propagation. Returns possibly conflicting clause.
     /*AB*///void     cancelUntil      (int level);                                             // Backtrack until a certain level./*AE*/
-    bool     analyze          (CRef confl, vec<Lit>& out_learnt, int& out_btlevel);    // (bt = backtrack)
+    void     analyze          (CRef confl, vec<Lit>& out_learnt, int& out_btlevel);    // (bt = backtrack)
     void     analyzeFinal     (Lit p, vec<Lit>& out_conflict);                         // COULD THIS BE IMPLEMENTED BY THE ORDINARIY "analyze" BY SOME REASONABLE GENERALIZATION?
     bool     litRedundant     (Lit p, uint32_t abstract_levels);                       // (helper method for 'analyze()')
     lbool    search           (int nof_conflicts/*AB*/, bool nosearch/*AE*/);                                     // Search for a given number of conflicts.

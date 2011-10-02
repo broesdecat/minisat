@@ -473,7 +473,7 @@ bool Solver::isAlreadyUsedInAnalyze(const Lit& lit) const{
 	return seen[var(lit)]==1;
 }
 
-bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
+void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 {
     int pathC = 0;
     Lit p     = lit_Undef;
@@ -487,14 +487,13 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 			lvl = litlevel;
 		}
 	}
+
+	assert(lvl<=decisionLevel());
+
 	cancelUntil(lvl);
 
-	if(lvl==0){
-		return false;
-	}
-
-	assert(lvl==decisionLevel());
 	assert(confl!=CRef_Undef);
+	assert(lvl==decisionLevel());
 
 	//reportf("Conflicts: %d.\n", conflicts);
 	std::vector<Lit> explain;
@@ -561,10 +560,6 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         confl = reason(var(p));
         
 		/*AB*/
-        if(getPCSolver().symmetryPropagationOnAnalyze(p)){
-        	return true;
-        }
-
 		if(verbosity>4){
 			clog <<"Getting explanation for ";
 			for(std::vector<Lit>::iterator i=explain.begin(); i<explain.end(); i++){
@@ -644,7 +639,7 @@ bool Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 
     for (int j = 0; j < analyze_toclear.size(); j++) seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
 
-	/*A*/return false;
+	/*A*/
 }
 
 
@@ -751,19 +746,8 @@ CRef Solver::notifypropagate()
     int     num_props = 0;
     watches.cleanAll();
 
-    // Needs to happen before starting to propagate
-    if(not getPCSolver().propagateSymmetry2()){
-    	ok = false;
-    	return confl;
-    }
-
-
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
-        if(getPCSolver().propagateSymmetry(p)){ // Needs to happen before doing any other propagation
-        	symmetryConflict=true;
-        	return confl;
-        }
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
         num_props++;
@@ -819,8 +803,6 @@ CRef Solver::notifypropagate()
     }
     propagations += num_props;
     simpDB_props -= num_props;
-
-    symmetryConflict=false;
 
     return confl;
 }
@@ -938,7 +920,6 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
     starts++;
 
     CRef confl = CRef_Undef;
-    symmetryConflict = false;
     bool fullassignmentconflict = false;
 
     for (;;){
@@ -951,21 +932,6 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
         	return l_False;
         }
 
-        if(symmetryConflict){
-        	symmetryConflict=false;
-//**/		std::clog << "backtrack one after symmetryConflict: " << "\n";
-			int level = decisionLevel()-1;
-			if(level<0){
-				ok=false;
-			}else{
-				Lit decision = trail[trail_lim[level]];
-				Lit negDecision = mkLit(var(decision),!sign(decision));
-				cancelUntil(level);
-				uncheckedEnqueue(negDecision);
-			}
-			continue;
-        }
-
         if (confl != CRef_Undef){
             // CONFLICT
             conflicts++; conflictC++;
@@ -973,21 +939,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
 
             learnt_clause.clear();
 
-            bool symmetrybacktrack = analyze(confl, learnt_clause, backtrack_level);
-
-            if(symmetrybacktrack){
-//**/			std::clog << "backtrack one: " << "\n";
-				int level = decisionLevel()-1;
-				if(level<0){
-					ok=false;
-				}else{
-					Lit decision = trail[trail_lim[level]];
-					Lit negDecision = mkLit(var(decision),!sign(decision));
-					cancelUntil(level);
-					uncheckedEnqueue(negDecision);
-				}
-				continue;
-            }
+            analyze(confl, learnt_clause, backtrack_level);
 
             cancelUntil(backtrack_level);
 
