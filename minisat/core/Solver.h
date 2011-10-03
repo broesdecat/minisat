@@ -209,8 +209,6 @@ public:
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
 
-    CRef     reason           (Var x) const;
-
 protected:
 	void    	varDecayActivity	();							// Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
 	void     	claDecayActivity	();							// Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
