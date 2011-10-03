@@ -51,8 +51,7 @@ private:
 public:
 /*AB*/
 	// Symmetry code
-	bool		isDecision			(const Lit& lit) const { return false; }
-#warning ERROR IN SYMMETRY CODE
+	bool		isDecision			(const Lit& lit) const { return (getLevel(var(lit))!=0 && lit==trail[trail_lim[getLevel(var(lit))-1]]); }
 	CRef		reason				(Var x) const;
 
 	bool		isUnsat				() const { return not ok; }
