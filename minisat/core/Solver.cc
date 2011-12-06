@@ -37,6 +37,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "utils/Utils.hpp"
 #include "utils/Print.hpp"
 #include "theorysolvers/PCSolver.hpp"
+#include "external/TerminationManagement.hpp"
 
 using namespace std;
 using namespace MinisatID;
@@ -923,6 +924,9 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/)
     bool fullassignmentconflict = false;
 
     for (;;){
+    	if(terminateRequested()){
+    		return l_Undef;
+    	}
     	if(!fullassignmentconflict){
     		confl = propagate();
     	}
@@ -1108,8 +1112,14 @@ lbool Solver::solve_(/*AB*/bool nosearch/*AE*/)
     // Search:
     int curr_restarts = 0;
     while (status == l_Undef){
+    	if(terminateRequested()){
+    		return l_Undef;
+    	}
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
         status = search(rest_base * restart_first/*AB*/, nosearch/*AE*/);
+    	if(terminateRequested()){
+    		return l_Undef;
+    	}
     	/*AB*/
     	if(nosearch){
     		return status;
