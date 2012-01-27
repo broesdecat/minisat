@@ -338,7 +338,7 @@ protected:
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
     bool     withinBudget     ()      const;
 
-    void 	checkResiduals(const Clause& c);
+    void 	checkDecisionVars(const Clause& c);
 
     // Static helpers:
     //

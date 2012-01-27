@@ -76,35 +76,40 @@ static DoubleOption opt_garbage_frac(_cat, "gc-frac", "The fraction of wasted me
 // Constructor/Destructor:
 
 Solver::Solver(/*AB*/PCSolver* s/*AE*/)
-		:/*A*/Propagator(s),
-		/*A*/fullassignment(false),
-		// Parameters (user settable):
-		//
-		/*A*/verbosity(getPCSolver().verbosity()),
-		var_decay(opt_var_decay), clause_decay(opt_clause_decay), random_var_freq(opt_random_var_freq), random_seed(opt_random_seed),
-		luby_restart(opt_luby_restart), ccmin_mode(opt_ccmin_mode), phase_saving(opt_phase_saving), rnd_pol(false), rnd_init_act(opt_rnd_init_act),
-		garbage_frac(opt_garbage_frac), restart_first(opt_restart_first), restart_inc(opt_restart_inc)
+		: /*A*/Propagator(s),
+			/*A*/fullassignment(false),
+			// Parameters (user settable):
+			//
+			/*A*/verbosity(getPCSolver().verbosity()),
+			var_decay(opt_var_decay), clause_decay(opt_clause_decay), random_var_freq(opt_random_var_freq), random_seed(opt_random_seed),
+			luby_restart(opt_luby_restart), ccmin_mode(opt_ccmin_mode), phase_saving(opt_phase_saving), rnd_pol(false), rnd_init_act(opt_rnd_init_act),
+			garbage_frac(opt_garbage_frac), restart_first(opt_restart_first), restart_inc(opt_restart_inc)
 
-		// Parameters (the rest):
-		//
-		, learntsize_factor((double) 1 / (double) 3), learntsize_inc(1.1)
+			// Parameters (the rest):
+			//
+					,
+			learntsize_factor((double) 1 / (double) 3), learntsize_inc(1.1)
 
-		// Parameters (experimental):
-		//
-		,learntsize_adjust_start_confl(100), learntsize_adjust_inc(1.5)
+			// Parameters (experimental):
+			//
+					,
+			learntsize_adjust_start_confl(100), learntsize_adjust_inc(1.5)
 
-		/*A*/,usecustomheur(false)
-		/*A*/,customheurfreq(0.75)
+			/*A*/,
+			usecustomheur(false)
+			/*A*/,
+			customheurfreq(0.75)
 
-		// Statistics: (formerly in 'SolverStats')
-		//
-		,solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), dec_vars(0), clauses_literals(0), learnts_literals(0),
-		max_literals(0), tot_literals(0)
-		,ok(true), cla_inc(1), var_inc(1), watches(WatcherDeleted(ca)), qhead(0), simpDB_assigns(-1), simpDB_props(0), order_heap(VarOrderLt(activity)),
-		progress_estimate(0), remove_satisfied(true)
-		// Resource constraints:
-		//
-		,conflict_budget(-1), propagation_budget(-1), asynch_interrupt(false) {
+			// Statistics: (formerly in 'SolverStats')
+			//
+					,
+			solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), dec_vars(0), clauses_literals(0), learnts_literals(0),
+			max_literals(0), tot_literals(0), ok(true), cla_inc(1), var_inc(1), watches(WatcherDeleted(ca)), qhead(0), simpDB_assigns(-1), simpDB_props(0),
+			order_heap(VarOrderLt(activity)), progress_estimate(0), remove_satisfied(true)
+			// Resource constraints:
+			//
+					,
+			conflict_budget(-1), propagation_budget(-1), asynch_interrupt(false) {
 	/*AB*/
 	getPCSolver().accept(this, EV_PROPAGATE);
 	getPCSolver().accept(this, EV_PRINTSTATS);
@@ -244,11 +249,20 @@ void Solver::addToClauses(CRef cr, bool learnt) {
 	}
 }
 
-void Solver::checkResiduals(const Clause& c) {
+/**
+ * Checks whether at least one watch is a decision variable.
+ * If not, it randomly chooses one and makes it a decision variable
+ * This guarantees that when all decision vars have been chosen, all clauses are certainly satisfied
+ *
+ * complexity: O(1)
+ */
+void Solver::checkDecisionVars(const Clause& c) {
 	if (not isDecisionVar(var(c[0])) && not isDecisionVar(var(c[1]))) {
 		int choice = irand(random_seed, 2);
 		assert(choice==0 || choice==1);
-		cerr << "Choice: " << choice << "\n";
+		if(verbosity>2){
+			cerr << "Choice: " << choice << "\n";
+		}
 		setDecisionVar(var(c[choice]), true);
 	}
 }
@@ -265,7 +279,7 @@ void Solver::attachClause(CRef cr) {
 		clauses_literals += c.size();
 
 	/*AB*/
-	checkResiduals(c);
+	checkDecisionVars(c);
 	/*AE*/
 }
 
@@ -757,8 +771,9 @@ CRef Solver::notifypropagate() {
 					c[1] = c[k];
 					c[k] = false_lit;
 					watches[~c[1]].push(w);
-					/*A*/
-					checkResiduals(c);
+					/*AB*/
+					checkDecisionVars(c);
+					/*AE*/
 					goto NextClause;
 				}
 
@@ -1002,11 +1017,11 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 					}
 
 					if (confl == CRef_Undef) { // Assignment is a model
-				//		cerr << "Model: ";
-				//		for (auto i = 0; i < nbVars(); i++) {
-				//			auto lit = mkLit(i);
-				//			cerr << (sign(lit) ? "-" : "") << var(lit) + 1 << ":" << (value(lit) == l_True ? '1' : (value(lit) == l_False ? '0' : 'X')) << " ";
-				//		}
+						//		cerr << "Model: ";
+						//		for (auto i = 0; i < nbVars(); i++) {
+						//			auto lit = mkLit(i);
+						//			cerr << (sign(lit) ? "-" : "") << var(lit) + 1 << ":" << (value(lit) == l_True ? '1' : (value(lit) == l_False ? '0' : 'X')) << " ";
+						//		}
 						return l_True;
 					} else {
 						fullassignmentconflict = true;
