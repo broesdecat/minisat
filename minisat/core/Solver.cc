@@ -139,7 +139,7 @@ Var Solver::newVar(lbool upol, bool dvar) {
 	user_pol.push(upol);
 	decision.push();
 	trail.capacity(v + 1);
-	setDecisionVar(v, dvar);
+	setDecidable(v, dvar);
 	return v;
 }
 
@@ -263,7 +263,7 @@ void Solver::checkDecisionVars(const Clause& c) {
 		if(verbosity>2){
 			cerr << "Choice: " << choice << "\n";
 		}
-		setDecisionVar(var(c[choice]), true);
+		setDecidable(var(c[choice]), true);
 	}
 }
 /*AE*/

@@ -87,7 +87,7 @@ public:
 	void		addForcedChoices	(const vec<Lit>&)	 	{ std::cerr <<"Not supported by solver!\n"; exit(-1);  }
 	void		disableHeur			() 						{ std::cerr <<"Not supported by solver!\n"; exit(-1); }
 	bool     	isDecisionVar		(Var v) 		const 	{ assert(v<decision.size());return decision[v]; }
-	void    	setDecisionVar 		(Var v, bool b);  // Declare if a variable should be eligible for selection in the decision heuristic.
+	void    	setDecidable	 	(Var v, bool decide);
 
 	void		notifyCustomHeur	() 						{ usecustomheur = true; }
 
@@ -412,12 +412,12 @@ inline int      Solver::nLearnts      ()      const   { return learnts.size(); }
 inline int      Solver::nVars         ()      const   { return vardata.size(); }
 inline int      Solver::nFreeVars     ()      const   { return (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]); }
 inline void     Solver::setPolarity   (Var v, lbool b){ user_pol[v] = b; }
-inline void     Solver::setDecisionVar(Var v, bool b) 
+inline void     Solver::setDecidable(Var v, bool decide)
 { 
-    if      ( b && !decision[v]) dec_vars++;
-    else if (!b &&  decision[v]) dec_vars--;
+    if      ( decide && !decision[v]) dec_vars++;
+    else if (!decide &&  decision[v]) dec_vars--;
 
-    decision[v] = b;
+    decision[v] = decide;
     insertVarOrder(v);
 }
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
