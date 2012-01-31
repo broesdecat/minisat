@@ -379,6 +379,13 @@ void Solver::cancelUntil(int level) {
 		getPCSolver().backtrackDecisionLevel(level, decision);
 		/*AE*/
 	}
+	/*if(level==0){
+		cerr <<"Root certainties: ";
+		for(int i=0; i<trail.size(); ++i){
+			cerr<<(sign(trail[i])?"-":"") <<var(trail[i])+1 <<", ";
+		}
+		cerr <<"\n";
+	}*/
 }
 
 //=================================================================================================
