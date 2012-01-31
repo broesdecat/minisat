@@ -84,8 +84,8 @@ public:
 
 	uint64_t    nbVars				()				const;					// The current number of variables.
 
-	void		addForcedChoices	(const vec<Lit>&)	 	{ std::cerr <<"Not supported by solver!\n"; exit(-1);  }
-	void		disableHeur			() 						{ std::cerr <<"Not supported by solver!\n"; exit(-1); }
+	void		addForcedChoices	(const vec<Lit>&)	 	{ std::clog <<"Not supported by solver!\n"; exit(-1);  }
+	void		disableHeur			() 						{ std::clog <<"Not supported by solver!\n"; exit(-1); }
 	bool     	isDecisionVar		(Var v) 		const 	{ assert(v<decision.size());return decision[v]; }
 	void    	setDecidable	 	(Var v, bool decide);
 
