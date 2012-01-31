@@ -915,6 +915,9 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 		if (terminateRequested()) {
 			return l_Undef;
 		}
+		if (!ok) {
+			return l_False;
+		}
 		if (!fullassignmentconflict) {
 			confl = propagate();
 		}
