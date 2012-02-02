@@ -716,7 +716,7 @@ void Solver::uncheckedEnqueue(Lit p, CRef from) {
 	trail.push_(p);
 	/*A*/
 	getPCSolver().notifySetTrue(p);
-	/*A*/if (verbosity >= 3) {
+	/*A*/if (verbosity > 3) {
 		getPCSolver().printEnqueued(p);
 	}
 }
@@ -1039,7 +1039,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 				}
 
 				/*AB*/
-				if (verbosity >= 2) {
+				if (verbosity > 3) {
 					getPCSolver().printChoiceMade(decisionLevel(), next);
 				}
 				/*AE*/
