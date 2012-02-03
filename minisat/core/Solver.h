@@ -412,14 +412,14 @@ inline int      Solver::nLearnts      ()      const   { return learnts.size(); }
 inline int      Solver::nVars         ()      const   { return vardata.size(); }
 inline int      Solver::nFreeVars     ()      const   { return (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]); }
 inline void     Solver::setPolarity   (Var v, lbool b){ user_pol[v] = b; }
-inline void     Solver::setDecidable(Var v, bool decide)
+/*inline void     Solver::setDecidable(Var v, bool decide) // NOTE: no-op if already a decision var!
 { 
-    if      ( decide && !decision[v]) dec_vars++;
+	if      ( decide && !decision[v]) dec_vars++;
     else if (!decide &&  decision[v]) dec_vars--;
 
     decision[v] = decide;
     insertVarOrder(v);
-}
+}*/
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
 inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagations + x; }
 inline void     Solver::interrupt(){ asynch_interrupt = true; }
