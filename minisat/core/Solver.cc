@@ -215,10 +215,12 @@ struct LessThan_random{
     }
 };
 
-bool Solver::addClause(vec<Lit>& ps, CRef& newclause) {
-	assert(decisionLevel() == 0); //FIXME
-	if (!ok)
+bool Solver::addBinaryOrLargerClause(vec<Lit>& ps, CRef& newclause) {
+	assert(decisionLevel()==0); // TODO can also relax this here
+
+	if (!ok){
 		return false;
+	}
 
 	sort(ps); // NOTE: remove duplicates
 	assert(ps.size()>1);
@@ -237,40 +239,61 @@ bool Solver::addClause(vec<Lit>& ps, CRef& newclause) {
 
 
 bool Solver::addClause_(vec<Lit>& ps) {
-	if (!ok)
+	if (!ok){
 		return false;
+	}
 
-	// Check if clause is satisfied and remove false/duplicate literals:
+	if(decisionLevel()>0){
+		int nonfalsecount = 0;
+		for(int i=0; i<ps.size() && nonfalsecount<2; ++i){
+			if(not isFalse(ps[i])){
+				nonfalsecount++;
+			}
+		}
+		if(nonfalsecount<2){
+			cancelUntil(0);
+			return addClause_(ps);
+		}
+	}
+
 	sort(ps); // NOTE: remove duplicates
-	Lit p;
-	int i, j;
-	//FIXME
-/*	for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
-		if (value(ps[i]) == l_True || ps[i] == ~p)
-			return true;
-		else if (value(ps[i]) != l_False && ps[i] != p)
-			ps[j++] = p = ps[i];
-	ps.shrink(i - j);*/
 
-	sort(ps, LessThan_random<Lit>()); // NOTE: reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
+	if(decisionLevel()==0){
+		// Check satisfaction and remove false literals
+		Lit p;
+		int i, j;
+		for (i = j = 0, p = lit_Undef; i < ps.size(); i++){
+			if (value(ps[i]) == l_True || ps[i] == ~p){
+				return true;
+			}else if (value(ps[i]) != l_False && ps[i] != p){
+				ps[j++] = p = ps[i];
+			}
+		}
+		ps.shrink(i - j);
+	}
+
+	// NOTE: sort randomly to reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
+	sort(ps, LessThan_random<Lit>());
 
 	if (ps.size() == 0) {
 		return ok = false;
 	} else if (ps.size() == 1) {
-		//assert(decisionLevel() == 0); // FIXME
-		if(isFalse(ps[0]) && decisionLevel()>0){
-			cancelUntil(0);
-		}
+		assert(decisionLevel()==0);
 		uncheckedEnqueue(ps[0]);
 		return ok = (propagate() == CRef_Undef);
 	} else {
+		if(decisionLevel()>0){
+			for(int i=0; i<ps.size(); ++i){
+				if(not isFalse(ps[i])){
+					auto temp = ps[i];
+					ps[i] = ps[1];
+					ps[1] = temp;
+					break;
+				}
+			}
+		}
 		CRef cr = ca.alloc(ps, false);
 		addToClauses(cr, false);
-		if(isFalse(ca[cr][1]) || isFalse(ca[cr][0])){ // FIXME make smarter!
-			cancelUntil(0);
-#error At level 0, should remove all false literals from the clause
-#error checkdecisionvars should not be called when both watches are still false, which can currently happen (blocker or unsat)
-		}
 		attachClause(cr);
 	}
 
@@ -295,26 +318,25 @@ void Solver::addToClauses(CRef cr, bool learnt) {
  * complexity: O(1)
  */
 void Solver::checkDecisionVars(const Clause& c) {
-	assert(not isFalse(var(c[0])) || not isFalse(var(c[1])));
-	if (not isDecisionVar(var(c[0])) && not isDecisionVar(var(c[1]))) {
+	assert(not isFalse(c[0]) || not isFalse(c[1]));
+	if(isFalse(c[0])){
+		setDecidable(var(c[1]), true);
+	}else if(isFalse(c[1])){
+		setDecidable(var(c[0]), true);
+	}else if (not isDecisionVar(var(c[0])) && not isDecisionVar(var(c[1]))) {
 		int choice = irand(random_seed, 2);
-		if(isFalse(var(c[0]))){
-			choice = 1;
-		}
-		if(isFalse(var(c[1]))){
-			choice = 0;
-		}
 		assert(choice==0 || choice==1);
 		setDecidable(var(c[choice]), true);
 	}
+	assert((not isFalse(c[0]) && isDecisionVar(var(c[0]))) || (not isFalse(c[1]) && isDecisionVar(var(c[1]))));
 }
 /*AE*/
 
 void Solver::attachClause(CRef cr) {
 	const Clause& c = ca[cr];
 	assert(c.size() > 1);
-	if(isFalse(c[1]) || isFalse(c[0])){ // FIXME make smarter!
-		cancelUntil(0);
+	if(not c.learnt()){
+		assert(not isFalse(c[1]) || not isFalse(c[0]));
 	}
 	watches[~c[0]].push(Watcher(cr, c[1]));
 	watches[~c[1]].push(Watcher(cr, c[0]));
@@ -324,7 +346,9 @@ void Solver::attachClause(CRef cr) {
 		clauses_literals += c.size();
 
 	/*AB*/
-	checkDecisionVars(c);
+	if(not c.learnt() || (not isFalse(c[1]) || not isFalse(c[0]))){
+		checkDecisionVars(c);
+	}
 	//printClause(cr); // Debugging
 	/*AE*/
 }
@@ -795,18 +819,18 @@ CRef Solver::notifypropagate() {
 
 		for (i = j = (Watcher*) ws, end = i + ws.size(); i != end;) {
 			// Try to avoid inspecting the clause:
-			Lit blocker = i->blocker;
+			// FIXME do not understand blocker code yet, so commented it
+/*			Lit blocker = i->blocker;
 			if (value(blocker) == l_True) {
-				/*AB*/
-				checkDecisionVars(ca[i->cref]); // FIXME check calls to checkdecisionvars
-				/*AE*/
+				//setDecidable(var(blocker), true); // TODO is this the best possible call?
 				*j++ = *i++;
 				continue;
-			}
+			}*/
 
 			// Make sure the false literal is data[1]:
 			CRef cr = i->cref;
 			Clause& c = ca[cr];
+			assert(isDecisionVar(var(c[0])) || isDecisionVar(var(c[1])));
 			Lit false_lit = ~p;
 			if (c[0] == false_lit)
 				c[0] = c[1], c[1] = false_lit;
@@ -816,7 +840,7 @@ CRef Solver::notifypropagate() {
 			// If 0th watch is true, then clause is already satisfied.
 			Lit first = c[0];
 			Watcher w = Watcher(cr, first);
-			if (first != blocker && value(first) == l_True) {
+			if (/*first != blocker && */value(first) == l_True) { // TODO blocker
 				*j++ = w;
 				/*AB*/
 				checkDecisionVars(c);
@@ -839,19 +863,20 @@ CRef Solver::notifypropagate() {
 
 			// Did not find watch -- clause is unit under assignment:
 			*j++ = w;
-			if (value(first) == l_False) {
+			if (value(first) == l_False) { // NOTE: conflict during unit propagation
 				confl = cr;
 				qhead = trail.size();
 				// Copy the remaining watches:
 				while (i < end){
 					*j++ = *i++;
 				}
+				break; // FIXME Apparently missing here?
 			} else{
 				uncheckedEnqueue(first, cr);
+				/*AB*/
+				checkDecisionVars(c);
+				/*AE*/
 			}
-			/*AB*/
-			checkDecisionVars(c);
-			/*AE*/
 
 			NextClause: ;
 		}
@@ -1080,19 +1105,17 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 				if (next == lit_Undef) {
 					fullassignment = true;
 
-					Lit l = trail.last();
-					int prevlevel = decisionLevel();
 					confl = getPCSolver().checkFullAssignment(); // NOTE: can backtrack as any propagator, so in that case should not stop
 					if (order_heap.size()>0) {
 						continue;
 					}
 
 					if (confl == CRef_Undef) { // Assignment is a model
-						//		cerr << "Model: ";
-						//		for (auto i = 0; i < nbVars(); i++) {
-						//			auto lit = mkLit(i);
-						//			cerr << (sign(lit) ? "-" : "") << var(lit) + 1 << ":" << (value(lit) == l_True ? '1' : (value(lit) == l_False ? '0' : 'X')) << " ";
-						//		}
+						//cerr << "Model: ";
+						//for (auto i = 0; i < nbVars(); i++) {
+						//	auto lit = mkLit(i);
+						//	cerr << (sign(lit) ? "-" : "") << var(lit) + 1 << ":" << (value(lit) == l_True ? '1' : (value(lit) == l_False ? '0' : 'X')) << " ";
+						//}
 						return l_True;
 					} else {
 						fullassignmentconflict = true;

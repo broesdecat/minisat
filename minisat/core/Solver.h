@@ -60,7 +60,7 @@ public:
 	void		saveState			();
 	void		resetState			();
 	void     	printClause			(const CRef c) 	const;
-	bool    	addClause 			(vec<Lit>& ps, CRef& newclause);
+	bool    	addBinaryOrLargerClause	(vec<Lit>& ps, CRef& newclause);
 	void		addLearnedClause	(CRef c);					// don't check anything, just add it to the clauses and bump activity
 	void     	removeClause     	(CRef cr);					// Detach and free a clause.
 	CRef		makeClause			(const vec<Lit>& lits, bool b){ return ca.alloc(lits, b); }
