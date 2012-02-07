@@ -122,8 +122,10 @@ Solver::~Solver() {
 
 void Solver::setDecidable(Var v, bool decide) // NOTE: no-op if already a decision var!
 {
-	if      ( decide && !decision[v]) dec_vars++;
-    else if (!decide &&  decision[v]) dec_vars--;
+	bool newdecidable = decide && !decision[v];
+	if( newdecidable){
+		dec_vars++;
+	} else if (!decide &&  decision[v]) dec_vars--;
 
 	if(verbosity>4){
 		if(decide){
@@ -135,6 +137,10 @@ void Solver::setDecidable(Var v, bool decide) // NOTE: no-op if already a decisi
 
     decision[v] = decide;
     insertVarOrder(v);
+
+    if(newdecidable){
+    	getPCSolver().notifyBecameDecidable(v);
+    }
 }
 
 //=================================================================================================
@@ -156,6 +162,7 @@ Var Solver::newVar(lbool upol, bool dvar) {
 	user_pol.push(upol);
 	decision.push();
 	trail.capacity(v + 1);
+	getPCSolver().notifyVarAdded(); // NOTE: important before setting decidability
 	setDecidable(v, dvar);
 	return v;
 }
@@ -820,27 +827,28 @@ CRef Solver::notifypropagate() {
 		for (i = j = (Watcher*) ws, end = i + ws.size(); i != end;) {
 			// Try to avoid inspecting the clause:
 			// FIXME do not understand blocker code yet, so commented it
-/*			Lit blocker = i->blocker;
+			Lit blocker = i->blocker;
 			if (value(blocker) == l_True) {
-				//setDecidable(var(blocker), true); // TODO is this the best possible call?
+				setDecidable(var(blocker), true); // TODO is this the best possible call?
 				*j++ = *i++;
 				continue;
-			}*/
+			}
 
 			// Make sure the false literal is data[1]:
 			CRef cr = i->cref;
 			Clause& c = ca[cr];
 			assert(isDecisionVar(var(c[0])) || isDecisionVar(var(c[1])));
 			Lit false_lit = ~p;
-			if (c[0] == false_lit)
+			if (c[0] == false_lit){
 				c[0] = c[1], c[1] = false_lit;
+			}
 			assert(c[1] == false_lit);
 			i++;
 
 			// If 0th watch is true, then clause is already satisfied.
 			Lit first = c[0];
 			Watcher w = Watcher(cr, first);
-			if (/*first != blocker && */value(first) == l_True) { // TODO blocker
+			if (first != blocker && value(first) == l_True) { // TODO blocker
 				*j++ = w;
 				/*AB*/
 				checkDecisionVars(c);
@@ -866,11 +874,10 @@ CRef Solver::notifypropagate() {
 			if (value(first) == l_False) { // NOTE: conflict during unit propagation
 				confl = cr;
 				qhead = trail.size();
-				// Copy the remaining watches:
+				// Copy the remaining watches: (NOTE: will cause loop to be false)
 				while (i < end){
 					*j++ = *i++;
 				}
-				break; // FIXME Apparently missing here?
 			} else{
 				uncheckedEnqueue(first, cr);
 				/*AB*/
@@ -959,7 +966,7 @@ void Solver::rebuildOrderHeap() {
 bool Solver::simplify() {
 	assert(decisionLevel() == 0);
 
-	if (!ok || notifypropagate() != CRef_Undef)
+	if (!ok || propagate() != CRef_Undef)
 		return ok = false;
 
 	if (nAssigns() == simpDB_assigns || (simpDB_props > 0))
