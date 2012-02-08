@@ -1113,7 +1113,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 					fullassignment = true;
 
 					confl = getPCSolver().checkFullAssignment(); // NOTE: can backtrack as any propagator, so in that case should not stop
-					if (order_heap.size()>0) {
+					if (order_heap.size()>0 || qhead!=trail.size()) {
 						continue;
 					}
 
