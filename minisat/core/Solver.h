@@ -28,6 +28,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 /*AB*/
 #include <vector>
+#include <queue>
 #include <iostream>
 #include <set>
 #include <list>
@@ -47,6 +48,7 @@ namespace Minisat {
 class Solver: public MinisatID::Propagator{
 private:
 /*A*/	bool fullassignment;
+		std::queue<CRef> reversetrail;
 
 public:
 /*AB*/
@@ -101,6 +103,8 @@ public:
 	CRef 		notifypropagate		();
 	void 		printStatistics		() 				const;
 	int			getNbOfFormulas		() 				const 	{ return nClauses(); }
+
+	void 		handleReverseTrail();
 /*AE*/
 
     // Constructor/Destructor:

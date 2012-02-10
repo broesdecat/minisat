@@ -243,41 +243,89 @@ bool Solver::addBinaryOrLargerClause(vec<Lit>& ps, CRef& newclause) {
 }
 /*AE*/
 
-
+void Solver::handleReverseTrail(){
+	while(not reversetrail.empty()){
+		CRef cr = reversetrail.front();
+		reversetrail.pop();
+		Clause& c = ca[cr];
+		int nonfalsecount = 0;
+		Lit unitlit;
+		for(int i=0; i<c.size() && nonfalsecount<2; ++i){
+			if(not isFalse(c[i])){
+				nonfalsecount++;
+				unitlit = c[i];
+			}
+		}
+		if(nonfalsecount==0){
+			// conflict: add immediately
+			vec<Lit> learnt;
+			int btlevel;
+			analyze(cr, learnt, btlevel);
+			reversetrail.push(cr);
+			cancelUntil(btlevel);
+		}else if(nonfalsecount==1){
+			// do propagation, do not add to watches yet but set as explanation clause
+			uncheckedEnqueue(unitlit, cr);
+			reversetrail.push(cr);
+		}
+	}
+}
 
 bool Solver::addClause_(vec<Lit>& ps) {
 	if (!ok){
 		return false;
 	}
 
+	sort(ps); // NOTE: remove duplicates
+
 	if(decisionLevel()>0){
+		// NOTE: sort randomly to reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
+		sort(ps, LessThan_random<Lit>());
+
 		int nonfalsecount = 0;
+		Lit unitlit;
 		for(int i=0; i<ps.size() && nonfalsecount<2; ++i){
 			if(not isFalse(ps[i])){
 				nonfalsecount++;
+				unitlit = ps[i];
 			}
 		}
 		if(nonfalsecount<2){
 			cancelUntil(0);
 			return addClause_(ps);
 		}
-	}
-
-	sort(ps); // NOTE: remove duplicates
-
-	if(decisionLevel()==0){
-		// Check satisfaction and remove false literals
-		Lit p;
-		int i, j;
-		for (i = j = 0, p = lit_Undef; i < ps.size(); i++){
-			if (value(ps[i]) == l_True || ps[i] == ~p){
-				return true;
-			}else if (value(ps[i]) != l_False && ps[i] != p){
-				ps[j++] = p = ps[i];
-			}
+		if(nonfalsecount==0){
+			// conflict: add immediately
+			CRef cr = ca.alloc(ps, false);
+			addToClauses(cr, false);
+			vec<Lit> learnt;
+			int btlevel;
+			analyze(cr, learnt, btlevel);
+			reversetrail.push(cr);
+			cancelUntil(btlevel);
+			return ok;
+		}else if(nonfalsecount==1){
+			// do propagation, do not add to watches yet but set as explanation clause
+			CRef cr = ca.alloc(ps, false);
+			addToClauses(cr, false);
+			uncheckedEnqueue(unitlit, cr);
+			reversetrail.push(cr);
+			return ok;
 		}
-		ps.shrink(i - j);
+		// otherwise, just add clause
 	}
+
+	// Check satisfaction and remove false literals
+	Lit p;
+	int i, j;
+	for (i = j = 0, p = lit_Undef; i < ps.size(); i++){
+		if (value(ps[i]) == l_True || ps[i] == ~p){
+			return true;
+		}else if (value(ps[i]) != l_False && ps[i] != p){
+			ps[j++] = p = ps[i];
+		}
+	}
+	ps.shrink(i - j);
 
 	// NOTE: sort randomly to reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
 	sort(ps, LessThan_random<Lit>());
@@ -289,16 +337,6 @@ bool Solver::addClause_(vec<Lit>& ps) {
 		uncheckedEnqueue(ps[0]);
 		return ok = (propagate() == CRef_Undef);
 	} else {
-		if(decisionLevel()>0){
-			for(int i=0; i<ps.size(); ++i){
-				if(not isFalse(ps[i])){
-					auto temp = ps[i];
-					ps[i] = ps[1];
-					ps[1] = temp;
-					break;
-				}
-			}
-		}
 		CRef cr = ca.alloc(ps, false);
 		addToClauses(cr, false);
 		attachClause(cr);
@@ -340,9 +378,19 @@ void Solver::checkDecisionVars(const Clause& c) {
 /*AE*/
 
 void Solver::attachClause(CRef cr) {
-	const Clause& c = ca[cr];
+	Clause& c = ca[cr];
 	assert(c.size() > 1);
 	if(not c.learnt()){
+		if(isFalse(c[1]) && isFalse(c[0])){
+			for(int i=0; i<c.size(); ++i){ // move watches such that first one is non false if possible
+				if(not isFalse(c[i])){
+					auto temp = c[i];
+					c[i] = c[1];
+					c[1] = temp;
+					break;
+				}
+			}
+		}
 		assert(not isFalse(c[1]) || not isFalse(c[0]));
 	}
 	watches[~c[0]].push(Watcher(cr, c[1]));
@@ -454,6 +502,7 @@ void Solver::cancelUntil(int level) {
 		int levels = trail_lim.size() - level;
 		trail_lim.shrink(levels);
 		getPCSolver().backtrackDecisionLevel(level, decision);
+		handleReverseTrail();
 		/*AE*/
 	}
 	/*if(level==0){
