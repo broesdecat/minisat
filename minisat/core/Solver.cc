@@ -33,6 +33,7 @@
 #include <iostream>
 #include <sstream>
 #include <cstdarg>
+#include <algorithm>
 
 #include "utils/Utils.hpp"
 #include "utils/Print.hpp"
@@ -215,12 +216,28 @@ bool Solver::totalModelFound() {
 	return v == var_Undef;
 }
 
-template<class T>
-struct LessThan_random{
-    bool operator () (T x, T y) {
-    	return x==y?false:rand() % 2;
-    }
+struct permute{
+	int newposition;
+	Lit value;
 };
+
+struct lessthan_permute{
+	bool operator() (const permute& lhs, const permute& rhs){
+		return lhs.newposition<rhs.newposition;
+	}
+};
+
+// NOTE: do not reimplement as sort with a random comparison operator, comparison should be CONSISTENT on consecutive calls!
+void permuteRandomly(vec<Lit>& lits){
+	vector<permute> newpositions;
+	for(int i=0; i<lits.size(); ++i){
+		newpositions.push_back({rand(), lits[i]});
+	}
+	std::sort(newpositions.begin(), newpositions.end(), lessthan_permute());
+	for(int i=0; i<lits.size(); ++i){
+		lits[i] = newpositions[i].value;
+	}
+}
 
 bool Solver::addBinaryOrLargerClause(vec<Lit>& ps, CRef& newclause) {
 	assert(decisionLevel()==0); // TODO can also relax this here
@@ -232,7 +249,7 @@ bool Solver::addBinaryOrLargerClause(vec<Lit>& ps, CRef& newclause) {
 	sort(ps); // NOTE: remove duplicates
 	assert(ps.size()>1);
 
-	sort(ps, LessThan_random<Lit>()); // NOTE: reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
+	permuteRandomly(ps); // NOTE: reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
 
 	CRef cr = ca.alloc(ps, false);
 	addToClauses(cr, false);
@@ -280,7 +297,7 @@ bool Solver::addClause_(vec<Lit>& ps) {
 	}
 
 	// NOTE: sort randomly to reduce dependency on grounding and literal introduction mechanics (certainly for lazy grounding)
-	sort(ps, LessThan_random<Lit>());
+	permuteRandomly(ps);
 
 	if (ps.size() == 0) {
 		return ok = false;
