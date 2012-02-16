@@ -128,7 +128,7 @@ void Solver::setDecidable(Var v, bool decide) // NOTE: no-op if already a decisi
 		dec_vars++;
 	} else if (!decide &&  decision[v]) dec_vars--;
 
-	if(verbosity>4){
+	if(verbosity>10){
 		if(decide){
 			clog <<">>> Making " <<mkPosLit(v) <<" decidable.\n";
 		}else if(not decide && decision[v]){
