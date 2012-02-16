@@ -219,6 +219,8 @@ bool Solver::totalModelFound() {
 struct permute{
 	int newposition;
 	Lit value;
+	permute(int newpos, Lit value): newposition(newpos), value(value){
+	}
 };
 
 struct lessthan_permute{
@@ -231,7 +233,7 @@ struct lessthan_permute{
 void permuteRandomly(vec<Lit>& lits){
 	vector<permute> newpositions;
 	for(int i=0; i<lits.size(); ++i){
-		newpositions.push_back({rand(), lits[i]});
+		newpositions.push_back(permute(rand(), lits[i]));
 	}
 	std::sort(newpositions.begin(), newpositions.end(), lessthan_permute());
 	for(int i=0; i<lits.size(); ++i){
