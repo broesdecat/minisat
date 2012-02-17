@@ -56,7 +56,7 @@ public:
 
 	bool		isUnsat				() const { return not ok; }
 	void 		notifyUnsat			() { ok = false; }
-	void		printECNF			(std::ostream& stream, std::set<Var>& printedvars);
+	int			printECNF			(std::ostream& stream, std::set<Var>& printedvars); // Returns the number of clauses that were added
 	void		saveState			();
 	void		resetState			();
 	void     	printClause			(const CRef c) 	const;

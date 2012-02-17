@@ -1431,10 +1431,10 @@ void Solver::printStatistics() const {
 	std::clog << "> conflict literals     : " << tot_literals << "  (" << ((max_literals - tot_literals) * 100 / (double) max_literals) << " % deleted)\n";
 }
 
-void Solver::printECNF(std::ostream& stream, std::set<Var>& printedvars) {
+int Solver::printECNF(std::ostream& stream, std::set<Var>& printedvars) {
 	if (not okay()) {
 		stream << "0\n";
-		return;
+		return 0;
 	}
 	for (int i = 0; i < clauses.size(); ++i) {
 		const Clause& clause = ca[clauses[i]];
@@ -1466,6 +1466,8 @@ void Solver::printECNF(std::ostream& stream, std::set<Var>& printedvars) {
 		// TODO should only print literals which have a translation?
 		stream << (sign(lit) ? -(var(lit) + 1) : var(lit) + 1) << " 0\n";
 	}
+
+	return clauses.size() + lastrootassertion;
 }
 
 /*AE*/
