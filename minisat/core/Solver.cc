@@ -818,6 +818,9 @@ void Solver::uncheckedEnqueue(Lit p, CRef from) {
 	vardata[var(p)] = mkVarData(from, decisionLevel());
 	trail.push_(p);
 	/*A*/
+	if(not isDecisionVar(var(p))){
+		setDecidable(var(p), true);
+	}
 	getPCSolver().notifySetTrue(p);
 	/*A*/if (verbosity > 3) {
 		getPCSolver().printEnqueued(p);
