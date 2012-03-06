@@ -174,6 +174,13 @@ inline void Solver::createNewDecisionLevel() {
 }
 
 /*AB*/
+void Solver::finishParsing(bool& present) {
+	present = true;
+	if(not simplify()){
+		getPCSolver().notifyUnsat();
+	}
+}
+
 std::vector<Lit> Solver::getDecisions() const {
 	std::vector<Lit> v;
 	for (int i = 0; i < trail_lim.size(); i++) {

@@ -96,7 +96,7 @@ public:
 	//PROPAGATOR CODE
 	const char* getName				() 				const	{ return "satsolver"; }
 	CRef 		getExplanation		(const Lit& l) 			{ return reason(var(l));}
-	void 		finishParsing		(bool& present, bool& unsat) { present = true; unsat = !simplify(); }
+	void 		finishParsing		(bool& present);
 	void 		notifyBacktrack		(int untillevel, const Lit& decision) { Propagator::notifyBacktrack(untillevel, decision); }
 	CRef 		notifypropagate		();
 	void 		printStatistics		() 				const;
