@@ -200,7 +200,7 @@ void Solver::addLearnedClause(CRef rc) {
 			printClause(rc);
 			reportf("\n");
 		}
-	} else {
+	} else { // Adding literal true at level 0
 		assert(c.size()==1);
 		cancelUntil(0);
 		vec<Lit> ps;
@@ -276,14 +276,14 @@ bool Solver::addClause_(vec<Lit>& ps) {
 		return false;
 	}
 
+	int nonfalsecount = 0;
 	if(decisionLevel()>0){
-		int nonfalsecount = 0;
 		for(int i=0; i<ps.size() && nonfalsecount<2; ++i){
 			if(not isFalse(ps[i])){
 				nonfalsecount++;
 			}
 		}
-		if(nonfalsecount<2){
+		if(nonfalsecount==0){
 			cancelUntil(0);
 			return addClause_(ps);
 		}
@@ -311,20 +311,12 @@ bool Solver::addClause_(vec<Lit>& ps) {
 	if (ps.size() == 0) {
 		return ok = false;
 	} else if (ps.size() == 1) {
-		assert(decisionLevel()==0);
+		if(decisionLevel()>0){
+			rootunitlits.push_back(ps[0]);
+		}
 		uncheckedEnqueue(ps[0]);
 		return ok = (propagate() == CRef_Undef);
 	} else {
-		if(decisionLevel()>0){
-			for(int i=0; i<ps.size(); ++i){
-				if(not isFalse(ps[i])){
-					auto temp = ps[i];
-					ps[i] = ps[1];
-					ps[1] = temp;
-					break;
-				}
-			}
-		}
 		CRef cr = ca.alloc(ps, false);
 		addToClauses(cr, false);
 		attachClause(cr);
@@ -365,9 +357,55 @@ void Solver::checkDecisionVars(const Clause& c) {
 }
 /*AE*/
 
+void swap(Clause& c, int from, int to){
+	assert(c.size()>from && c.size()>to);
+	auto temp = c[from];
+	c[from] = c[to];
+	c[to] = temp;
+}
+
 void Solver::attachClause(CRef cr) {
-	const Clause& c = ca[cr];
+	auto& c = ca[cr];
 	assert(c.size() > 1);
+
+	if(decisionLevel()>0 && not c.learnt()){ // If Level > 0 and an input clause, reorder the watches so the first two are unknown or the most recently chosen ones
+		int firstnonfalseindex = -1, secondnonfalseindex = -1, mostrecentfalseindex = -1, mostrecentfalselevel = -1;
+		for(int i=0; i<c.size(); ++i){
+			if(isFalse(c[i])){
+				if(level(var(c[i]))>mostrecentfalselevel){
+					mostrecentfalselevel = level(var(c[i]));
+					mostrecentfalseindex = i;
+				}
+			}else{
+				if(firstnonfalseindex==-1){
+					firstnonfalseindex = i;
+				}else if(secondnonfalseindex==-1){
+					secondnonfalseindex = i;
+				}
+			}
+		}
+
+		MAssert(firstnonfalseindex!=-1 && not isFalse(c[firstnonfalseindex]));
+		swap(c, firstnonfalseindex, 0);
+		MAssert(not isFalse(c[0]));
+
+		if(secondnonfalseindex!=-1){
+			MAssert(secondnonfalseindex!=-1 && not isFalse(c[secondnonfalseindex]));
+			swap(c, secondnonfalseindex, 1);
+			MAssert(not isFalse(c[1]));
+		}else{ // Clause is unit, so should add the latest false as watch AND have to propagate!
+			if(mostrecentfalseindex==0){
+				mostrecentfalseindex = firstnonfalseindex;
+			}
+			MAssert(mostrecentfalseindex!=-1 && isFalse(c[mostrecentfalseindex]));
+			swap(c, mostrecentfalseindex, 1);
+			MAssert(isFalse(c[1]));
+			if(not isTrue(c[0])){ // NOTE: important! The watch has already fired, so otherwise it would be lost!
+				uncheckedEnqueue(c[0]);
+			}
+		}
+	}
+
 	if(not c.learnt()){
 		assert(not isFalse(c[1]) || not isFalse(c[0]));
 	}
@@ -463,6 +501,9 @@ bool Solver::satisfied(const Clause& c) const {
 // Revert to the state at given level (keeping all assignment at 'level' but not beyond).
 //
 void Solver::cancelUntil(int level) {
+	if(verbosity>8){
+		clog <<"Backtracking to " <<level <<"\n";
+	}
 	if (decisionLevel() > level) {
 		/*A*/fullassignment = false;
 		/*A*/
@@ -481,6 +522,12 @@ void Solver::cancelUntil(int level) {
 		trail_lim.shrink(levels);
 		getPCSolver().backtrackDecisionLevel(level, decision);
 		/*AE*/
+	}
+	for(auto i=rootunitlits.cbegin(); i<rootunitlits.cend(); ++i){
+		uncheckedEnqueue(*i);
+	}
+	if(decisionLevel()==0){
+		rootunitlits.clear();
 	}
 	/*if(level==0){
 		cerr <<"Root certainties: ";
