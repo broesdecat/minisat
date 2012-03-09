@@ -132,7 +132,7 @@ class Clause {
         unsigned has_extra : 1;
         unsigned reloced   : 1;
         unsigned size      : 27; }                        header;
-    union { Lit lit; float act; uint32_t abs; CRef rel; } data[0];
+    union { Lit lit; float act; uint32_t abs; CRef rel; } data[1];
 
     friend class ClauseAllocator;
 
@@ -216,7 +216,7 @@ class ClauseAllocator
     RegionAllocator<uint32_t> ra;
 
     static uint32_t clauseWord32Size(int size, bool has_extra){
-        return (sizeof(Clause) + (sizeof(Lit) * (size + (int)has_extra))) / sizeof(uint32_t); }
+        return (sizeof(Clause) + (sizeof(Lit) * (size-1 + (int)has_extra))) / sizeof(uint32_t); }
 
  public:
     enum { Unit_Size = RegionAllocator<uint32_t>::Unit_Size };
