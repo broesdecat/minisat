@@ -314,7 +314,7 @@ bool Solver::addClause_(vec<Lit>& ps) {
 		if(decisionLevel()>0){
 			rootunitlits.push_back(ps[0]);
 		}
-		uncheckedEnqueue(ps[0]);
+		checkedEnqueue(ps[0]);
 		return ok = (propagate() == CRef_Undef);
 	} else {
 		CRef cr = ca.alloc(ps, false);
@@ -524,7 +524,7 @@ void Solver::cancelUntil(int level) {
 		/*AE*/
 	}
 	for(auto i=rootunitlits.cbegin(); i<rootunitlits.cend(); ++i){
-		uncheckedEnqueue(*i);
+		checkedEnqueue(*i);
 	}
 	if(decisionLevel()==0){
 		rootunitlits.clear();
@@ -857,6 +857,12 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict) {
 	}
 
 	seen[var(p)] = 0;
+}
+
+void Solver::checkedEnqueue(Lit p, CRef from) {
+	if(value(p)!=l_True){
+		uncheckedEnqueue(p, from);
+	}
 }
 
 void Solver::uncheckedEnqueue(Lit p, CRef from) {

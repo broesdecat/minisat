@@ -72,6 +72,7 @@ public:
 
 	void		cancelUntil			(int level);				// Backtrack until a certain level.
 	void		uncheckedEnqueue	(Lit p, CRef from = CRef_Undef); // Enqueue a literal. Assumes value of literal is undefined
+	void		checkedEnqueue		(Lit p, CRef from = CRef_Undef); // Enqueue a literal if it is not already true
 	int 		getLevel			(int var)		const;
 	bool 		totalModelFound		();							// True if the current assignment is completely two-valued
 	std::vector<Lit> getDecisions	()				const;
