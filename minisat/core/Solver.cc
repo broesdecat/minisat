@@ -401,7 +401,7 @@ void Solver::attachClause(CRef cr) {
 			swap(c, mostrecentfalseindex, 1);
 			MAssert(isFalse(c[1]));
 			if(not isTrue(c[0])){ // NOTE: important! The watch has already fired, so otherwise it would be lost!
-				uncheckedEnqueue(c[0]);
+				uncheckedEnqueue(c[0], cr);
 			}
 		}
 	}
@@ -686,7 +686,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel) {
 
 		/*AB*/
 		if (verbosity > 4) {
-			for (std::vector<Lit>::const_iterator i = explain.begin(); i < explain.end(); i++) {
+			for (auto i = explain.begin(); i < explain.end(); i++) {
 				clog << *i << " ";
 			}
 			clog << "\n";
@@ -707,7 +707,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel) {
 		/*AB*/
 		if (verbosity > 4) {
 			clog << "Getting explanation for ";
-			for (std::vector<Lit>::iterator i = explain.begin(); i < explain.end(); i++) {
+			for (auto i = explain.begin(); i < explain.end(); i++) {
 				if (var(*i) == var(p)) {
 					explain.erase(i);
 					break;
@@ -717,8 +717,25 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel) {
 		}
 
 		if (confl == CRef_Undef && pathC > 1) {
-			confl = getPCSolver().getExplanation(p);
-			deleteImplicitClause = true;
+			// FIXME Can the following happen? If so, should better change the level of the rootunitlits to 0 (then it is handled automatically)
+			bool delayedroot = false;
+			cerr <<"Looking for " <<p <<"\n";
+			for(auto j=rootunitlits.cbegin(); j<rootunitlits.cend(); ++j){
+				cerr <<"\t" <<*j <<"\n";
+				if(*j==p){
+					delayedroot = true;
+					break;
+				}
+			}
+			cerr <<(delayedroot?"delayed":"not found") <<"\n";
+			if(delayedroot){
+				InnerDisjunction d;
+				d.literals = {p};
+				confl = getPCSolver().createClause(d, true);
+			}else{
+				confl = getPCSolver().getExplanation(p);
+				deleteImplicitClause = true;
+			}
 		}
 		if (verbosity > 4 && confl != CRef_Undef) {
 			reportf("Explanation is ");
