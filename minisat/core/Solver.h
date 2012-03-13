@@ -50,6 +50,7 @@ private:
 
 public:
 /*AB*/
+	void 		setInitialPolarity(Var  var, bool pol) { polarity[var] = pol; }
 	std::vector<Lit> rootunitlits;	// basic reverse trail for unit clauses
 	// Symmetry code
 	bool		isDecision			(const Lit& lit) const { return (getLevel(var(lit))!=0 && lit==trail[trail_lim[getLevel(var(lit))-1]]); }

@@ -159,7 +159,11 @@ Var Solver::newVar(lbool upol, bool dvar) {
 	//activity .push(0);
 	activity.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
 	seen.push(0);
-	polarity.push(true);
+	if(getPCSolver().modes().lazy){
+		polarity.push(((float)rand()/ RAND_MAX)>0.5);
+	}else{
+		polarity.push(true);
+	}
 	user_pol.push(upol);
 	decision.push();
 	trail.capacity(v + 1);
@@ -1157,7 +1161,7 @@ lbool Solver::search(int nof_conflicts/*AB*/, bool nosearch/*AE*/) {
 				max_learnts *= learntsize_inc;
 
 				if (verbosity >= 1)
-					printf("| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n", (int) conflicts,
+					fprintf(stderr,"| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n", (int) conflicts,
 							(int) dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int) clauses_literals, (int) max_learnts,
 							nLearnts(), (double) learnts_literals / nLearnts(), progressEstimate() * 100);
 			}
@@ -1497,7 +1501,7 @@ void Solver::garbageCollect() {
 
 	relocAll(to);
 	if (verbosity >= 2)
-		printf("|  Garbage collection:   %12d bytes => %12d bytes             |\n", ca.size() * ClauseAllocator::Unit_Size,
+		fprintf(stderr, "|  Garbage collection:   %12d bytes => %12d bytes             |\n", ca.size() * ClauseAllocator::Unit_Size,
 				to.size() * ClauseAllocator::Unit_Size);
 	to.moveTo(ca);
 }
