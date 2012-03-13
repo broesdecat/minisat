@@ -723,15 +723,15 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel) {
 		if (confl == CRef_Undef && pathC > 1) {
 			// FIXME Can the following happen? If so, should better change the level of the rootunitlits to 0 (then it is handled automatically)
 			bool delayedroot = false;
-			cerr <<"Looking for " <<p <<"\n";
+			//cerr <<"Looking for " <<p <<"\n";
 			for(auto j=rootunitlits.cbegin(); j<rootunitlits.cend(); ++j){
-				cerr <<"\t" <<*j <<"\n";
+				//cerr <<"\t" <<*j <<"\n";
 				if(*j==p){
 					delayedroot = true;
 					break;
 				}
 			}
-			cerr <<(delayedroot?"delayed":"not found") <<"\n";
+			//cerr <<(delayedroot?"delayed":"not found") <<"\n";
 			if(delayedroot){
 				InnerDisjunction d;
 				d.literals = {p};
