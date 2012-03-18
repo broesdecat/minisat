@@ -159,11 +159,13 @@ Var Solver::newVar(lbool upol, bool dvar) {
 	//activity .push(0);
 	activity.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
 	seen.push(0);
+
 	if(getPCSolver().modes().lazy){
 		polarity.push(((float)rand()/ RAND_MAX)>0.5);
 	}else{
 		polarity.push(true);
 	}
+
 	user_pol.push(upol);
 	decision.push();
 	trail.capacity(v + 1);
@@ -589,14 +591,15 @@ Lit Solver::pickBranchLit() {
 	/*AE*/
 
 	// Choose polarity based on different polarity modes (global or per-variable):
-	if (next == var_Undef)
+	if (next == var_Undef){
 		return lit_Undef;
-	else if (user_pol[next] != l_Undef)
+	} else if (user_pol[next] != l_Undef){
 		return mkLit(next, user_pol[next] == l_True);
-	else if (rnd_pol)
+	} else if (rnd_pol){
 		return mkLit(next, drand(random_seed) < 0.5);
-	else
+	} else{
 		return mkLit(next, polarity[next]);
+	}
 }
 
 /*_________________________________________________________________________________________________
