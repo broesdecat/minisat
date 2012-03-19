@@ -50,6 +50,7 @@ private:
 
 public:
 /*AB*/
+	bool		handleConflict(CRef conflict);
 	void 		setInitialPolarity(Var  var, bool pol) { polarity[var] = pol; }
 	std::vector<Lit> rootunitlits;	// basic reverse trail for unit clauses
 	// Symmetry code
